@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft } from 'lucide-react';
+import { API_BASE_URL } from '@/utils/api';
 import styles from './Onboarding.module.css';
 import { PHASE_FLOWS } from './questions';
 import { useRouter } from 'next/navigation';
@@ -77,7 +78,7 @@ export default function PhaseQuestionnaire({ phase }: { phase: string }) {
           model_symptoms:           modelSymptomsObj,
         };
 
-        const response = await fetch('http://127.0.0.1:5000/api/onboarding', {
+        const response = await fetch(`${API_BASE_URL}/api/onboarding`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(mappedData)

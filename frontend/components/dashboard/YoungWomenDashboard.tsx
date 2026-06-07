@@ -22,6 +22,7 @@ import {
   calculateHormonalStressIndex, 
   calculateWellnessScore 
 } from '../../utils/healthUtils';
+import { API_BASE_URL } from '@/utils/api';
 
 export default function YoungWomenDashboard({ userName }: { userName: string }) {
   const router = useRouter();
@@ -56,7 +57,7 @@ export default function YoungWomenDashboard({ userName }: { userName: string }) 
       setLoading(true);
       
       // 1. Fetch Dashboard Data (Metrics + Predictions)
-      const dashRes = await fetch(`http://127.0.0.1:5000/api/dashboard-data/${userId}`);
+      const dashRes = await fetch(`${API_BASE_URL}/api/dashboard-data/${userId}`);
       const dashData = await dashRes.json();
 
       if (dashData.error) {
@@ -89,7 +90,7 @@ export default function YoungWomenDashboard({ userName }: { userName: string }) 
       });
 
       // 3. Fetch Recommendations
-      const RecRes  = await fetch(`http://127.0.0.1:5000/api/recommendations/${userId}`);
+      const RecRes  = await fetch(`${API_BASE_URL}/api/recommendations/${userId}`);
       const RecData = await RecRes.json();
       setRecommendations(RecData.recommendations || []);
 
@@ -120,7 +121,7 @@ export default function YoungWomenDashboard({ userName }: { userName: string }) 
         water_intake:        data.water === 'Less than 1L' ? 0.5 : data.water === '1-2L' ? 1.5 : data.water === '2-3L' ? 2.5 : 3.5,
       };
 
-      const response = await fetch('http://127.0.0.1:5000/api/profile', {
+      const response = await fetch(`${API_BASE_URL}/api/profile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(mappedData)

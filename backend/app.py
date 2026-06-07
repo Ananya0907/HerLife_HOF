@@ -27,7 +27,7 @@ scaler          = joblib.load("models/herlife_period_scaler.pkl")
 pcos_features   = joblib.load("models/herlife_pcos_features.pkl")
 period_features = joblib.load("models/herlife_period_features.pkl")
 
-print("✅ Models loaded successfully")
+print("OK: Models loaded successfully")
 
 # ── Helpers ──
 ordinal_maps = {

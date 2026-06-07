@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import styles from './AuthForm.module.css';
+import { API_BASE_URL } from '@/utils/api';
 
 interface LoginFormProps {
   onSwitchToSignUp: () => void;
@@ -23,7 +24,7 @@ export default function LoginForm({ onSwitchToSignUp, onLogin }: LoginFormProps)
 
     setLoading(true);
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/login', {
+      const response = await fetch(`${API_BASE_URL}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -58,7 +59,7 @@ export default function LoginForm({ onSwitchToSignUp, onLogin }: LoginFormProps)
     setLoading(true);
     setError('');
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/google-login', {
+      const response = await fetch(`${API_BASE_URL}/api/google-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email })

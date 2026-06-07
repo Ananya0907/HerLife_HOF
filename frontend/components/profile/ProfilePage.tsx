@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, UserCircle, Activity, Calendar, Heart, Droplet, Moon, Brain, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { API_BASE_URL } from '@/utils/api';
 import styles from './Profile.module.css';
 
 type LogEntry = {
@@ -57,7 +58,7 @@ export default function ProfilePage() {
       return;
     }
     
-    fetch(`http://127.0.0.1:5000/api/user-profile/${userId}`)
+    fetch(`${API_BASE_URL}/api/user-profile/${userId}`)
       .then(res => res.json())
       .then(d => {
         if (!d.error) setData(d);
