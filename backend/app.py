@@ -623,11 +623,12 @@ def get_user_profile(user_id):
                 "weight_kg":  user.get("weight_kg"),
             },
             "health": {
-                "cycle_length":     profile.get("cycle_length"),
-                "last_period_date": profile.get("last_period_date"),
-                "flow_intensity":   profile.get("flow_intensity"),
-                "periods_regular":  profile.get("periods_regular"),
-                "pcos_diagnosed":   profile.get("pcos_diagnosed"),
+                "cycle_length":      profile.get("cycle_length"),
+                "last_period_date":  profile.get("last_period_date"),
+                "flow_intensity":    profile.get("flow_intensity"),
+                "periods_regular":   profile.get("periods_regular"),
+                "pcos_diagnosed":    profile.get("pcos_diagnosed"),
+                "bleeding_duration": profile.get("bleeding_duration"),
             },
             "prediction": {
                 "cycle_phase":       pred.get("cycle_phase"),
@@ -638,6 +639,192 @@ def get_user_profile(user_id):
             "logs": logs_res.data or []
         }), 200
     except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+# ── 11. UPDATE TRACKER SETTINGS + RUN ML ──
+@app.route('/api/update-tracker', methods=['POST'])
+def update_tracker():
+    data = request.json
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+    try:
+        last_period = data.get("last_period_date")
+        cycle_length = int(data.get("cycle_length", 28))
+        period_length = int(data.get("period_length", 5))
+
+        # Update health_profile
+        supabase.table("health_profile").update({
+            "last_period_date": last_period,
+            "cycle_length": cycle_length,
+            "bleeding_duration": period_length
+        }).eq("user_id", user_id).execute()
+
+        # Re-run ML predictions
+        profile_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+        user_res = supabase.table("users").select("*").eq("id", user_id).execute()
+        
+        if profile_res.data and user_res.data:
+            profile = {**profile_res.data[0], **user_res.data[0]}
+            daily_mock = {"stress_level": 3, "sleep_quality": 3, "mood": 3, "water_glasses": 6}
+            model_input = build_model_input(profile, daily_mock)
+            
+            # PCOS Prediction (XGBoost)
+            pcos_df   = pd.DataFrame([{col: model_input.get(col, 0) for col in pcos_features}]).astype(float)
+            pcos_risk = round(float(pcos_model.predict_proba(pcos_df)[0][1]) * 100, 1)
+            
+            # Period Prediction (SVR)
+            period_df = pd.DataFrame([{col: model_input.get(col, 0) for col in period_features}]).astype(float)
+            period_sc = scaler.transform(period_df)
+            days_left = max(0, round(float(svr_model.predict(period_sc)[0])))
+            next_period = (date.today() + timedelta(days=days_left)).isoformat()
+            cycle_phase = get_cycle_phase(model_input["Days_Since_Last_Period"], model_input["Avg_Cycle_Length_days"])
+            
+            prediction = {
+                "user_id": user_id,
+                "cycle_phase": cycle_phase,
+                "days_until_period": days_left,
+                "pcos_risk_score": pcos_risk,
+                "next_period_date": next_period
+            }
+            supabase.table("predictions").upsert(prediction).execute()
+            
+            return jsonify({"success": True, "prediction": prediction}), 200
+        else:
+            return jsonify({"success": True}), 200
+    except Exception as e:
+        print(f"ERROR in update-tracker: {str(e)}")
+        return jsonify({"error": str(e)}), 400
+
+
+# ── 12. DELETE PERIOD LOG ──
+@app.route('/api/delete-period-log', methods=['POST'])
+def delete_period_log():
+    data = request.json
+    user_id = data.get("user_id")
+    log_date = data.get("log_date")
+    if not user_id or not log_date:
+        return jsonify({"error": "user_id and log_date are required"}), 400
+    try:
+        # Check and clear in health_profile if it matches
+        profile_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+        if profile_res.data:
+            profile = profile_res.data[0]
+            if profile.get("last_period_date") == log_date:
+                supabase.table("health_profile").update({"last_period_date": None}).eq("user_id", user_id).execute()
+        
+        # Update daily_logs on that date to set period_started = False
+        supabase.table("daily_logs").update({"period_started": False})\
+            .eq("user_id", user_id).eq("log_date", log_date).execute()
+
+        # Re-run predictions based on new state
+        profile_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+        user_res = supabase.table("users").select("*").eq("id", user_id).execute()
+        
+        if profile_res.data and user_res.data:
+            profile = {**profile_res.data[0], **user_res.data[0]}
+            daily_mock = {"stress_level": 3, "sleep_quality": 3, "mood": 3, "water_glasses": 6}
+            model_input = build_model_input(profile, daily_mock)
+            
+            # PCOS Prediction (XGBoost)
+            pcos_df   = pd.DataFrame([{col: model_input.get(col, 0) for col in pcos_features}]).astype(float)
+            pcos_risk = round(float(pcos_model.predict_proba(pcos_df)[0][1]) * 100, 1)
+            
+            # Period Prediction (SVR)
+            period_df = pd.DataFrame([{col: model_input.get(col, 0) for col in period_features}]).astype(float)
+            period_sc = scaler.transform(period_df)
+            days_left = max(0, round(float(svr_model.predict(period_sc)[0])))
+            next_period = (date.today() + timedelta(days=days_left)).isoformat()
+            cycle_phase = get_cycle_phase(model_input["Days_Since_Last_Period"], model_input["Avg_Cycle_Length_days"])
+            
+            prediction = {
+                "user_id": user_id,
+                "cycle_phase": cycle_phase,
+                "days_until_period": days_left,
+                "pcos_risk_score": pcos_risk,
+                "next_period_date": next_period
+            }
+            supabase.table("predictions").upsert(prediction).execute()
+
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        print(f"ERROR in delete-period-log: {str(e)}")
+        return jsonify({"error": str(e)}), 400
+
+
+# ── 13. EDIT PERIOD LOG ──
+@app.route('/api/edit-period-log', methods=['POST'])
+def edit_period_log():
+    data = request.json
+    user_id = data.get("user_id")
+    old_date = data.get("old_date")
+    new_date = data.get("new_date")
+    if not user_id or not old_date or not new_date:
+        return jsonify({"error": "user_id, old_date, and new_date are required"}), 400
+    try:
+        # 1. Check and update in health_profile if it matches old_date
+        profile_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+        if profile_res.data:
+            profile = profile_res.data[0]
+            if profile.get("last_period_date") == old_date:
+                supabase.table("health_profile").update({"last_period_date": new_date}).eq("user_id", user_id).execute()
+        
+        # 2. Update daily_logs: old_date set period_started = False
+        supabase.table("daily_logs").update({"period_started": False})\
+            .eq("user_id", user_id).eq("log_date", old_date).execute()
+
+        # 3. Check if new_date daily log exists
+        new_log_res = supabase.table("daily_logs").select("*")\
+            .eq("user_id", user_id).eq("log_date", new_date).execute()
+        
+        if new_log_res.data:
+            supabase.table("daily_logs").update({"period_started": True})\
+                .eq("user_id", user_id).eq("log_date", new_date).execute()
+        else:
+            supabase.table("daily_logs").insert({
+                "user_id": user_id,
+                "log_date": new_date,
+                "period_started": True,
+                "mood": 3,
+                "stress_level": 3,
+                "sleep_quality": 3,
+                "water_glasses": 6,
+                "energy_level": 1
+            }).execute()
+
+        # 4. Re-run predictions based on new state
+        profile_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+        user_res = supabase.table("users").select("*").eq("id", user_id).execute()
+        
+        if profile_res.data and user_res.data:
+            profile = {**profile_res.data[0], **user_res.data[0]}
+            daily_mock = {"stress_level": 3, "sleep_quality": 3, "mood": 3, "water_glasses": 6}
+            model_input = build_model_input(profile, daily_mock)
+            
+            # PCOS Prediction (XGBoost)
+            pcos_df   = pd.DataFrame([{col: model_input.get(col, 0) for col in pcos_features}]).astype(float)
+            pcos_risk = round(float(pcos_model.predict_proba(pcos_df)[0][1]) * 100, 1)
+            
+            # Period Prediction (SVR)
+            period_df = pd.DataFrame([{col: model_input.get(col, 0) for col in period_features}]).astype(float)
+            period_sc = scaler.transform(period_df)
+            days_left = max(0, round(float(svr_model.predict(period_sc)[0])))
+            next_period = (date.today() + timedelta(days=days_left)).isoformat()
+            cycle_phase = get_cycle_phase(model_input["Days_Since_Last_Period"], model_input["Avg_Cycle_Length_days"])
+            
+            prediction = {
+                "user_id": user_id,
+                "cycle_phase": cycle_phase,
+                "days_until_period": days_left,
+                "pcos_risk_score": pcos_risk,
+                "next_period_date": next_period
+            }
+            supabase.table("predictions").upsert(prediction).execute()
+
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        print(f"ERROR in edit-period-log: {str(e)}")
         return jsonify({"error": str(e)}), 400
 
 

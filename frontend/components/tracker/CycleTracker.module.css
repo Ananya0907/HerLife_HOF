@@ -230,3 +230,134 @@
     display: none;
   }
 }
+
+.saveBtn {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.75rem 2rem;
+  border-radius: 2rem;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 1rem;
+  box-shadow: 0 4px 12px rgba(209, 77, 114, 0.2);
+  transition: all 0.2s ease;
+}
+
+.saveBtn:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(209, 77, 114, 0.3);
+}
+
+.saveBtn:disabled {
+  background-color: var(--border);
+  color: var(--foreground-muted);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.historyEmpty {
+  color: var(--foreground-muted);
+  font-size: 1.05rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.historyActions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: 1.5rem;
+}
+
+.actionIconBtn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--foreground-muted);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.actionIconBtn:hover {
+  background-color: var(--border);
+  color: var(--foreground);
+}
+
+.deleteBtn:hover {
+  background-color: #fee2e2;
+  color: #ef4444;
+  border-color: #fca5a5;
+}
+
+.editRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.editInput {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  background-color: var(--card);
+  color: var(--foreground);
+  flex: 1;
+  max-width: 200px;
+}
+
+.editInput:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.editActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.confirmBtn {
+  background-color: #e8f5e9;
+  border: 1px solid #c8e6c9;
+  color: #2e7d32;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.confirmBtn:hover {
+  background-color: #c8e6c9;
+}
+
+.cancelBtn {
+  background-color: #ffebee;
+  border: 1px solid #ffcdd2;
+  color: #c62828;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.cancelBtn:hover {
+  background-color: #ffcdd2;
+}
+
