@@ -22,6 +22,9 @@ export default function UserMenu() {
   }, []);
 
   const handleLogout = () => {
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('user_name');
+    localStorage.removeItem('life_phase');
     localStorage.removeItem('herlife_onboarding');
     router.push('/');
   };

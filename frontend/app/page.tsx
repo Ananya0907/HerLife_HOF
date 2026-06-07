@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AuthLayout from '../components/auth/AuthLayout';
 import LoginForm from '../components/auth/LoginForm';
@@ -10,6 +10,18 @@ import { AnimatePresence, motion } from 'framer-motion';
 export default function Home() {
   const [isLogin, setIsLogin] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    const userId = localStorage.getItem('user_id');
+    const lifePhase = localStorage.getItem('life_phase');
+    if (userId) {
+      if (lifePhase && lifePhase !== 'pending') {
+        router.push(`/dashboard/${lifePhase}`);
+      } else {
+        router.push('/onboarding');
+      }
+    }
+  }, [router]);
 
   const handleLogin = () => {
     const lifePhase = localStorage.getItem('life_phase');
