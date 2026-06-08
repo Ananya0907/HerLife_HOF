@@ -316,3 +316,306 @@
     display: none;
   }
 }
+
+.inputGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.logInputItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.logNumInput {
+  padding: 0.75rem 1rem;
+  border: 1.5px solid var(--border);
+  border-radius: 1rem;
+  font-size: 1rem;
+  font-weight: 500;
+  outline: none;
+  transition: all 0.2s;
+  color: var(--foreground);
+  background: white;
+}
+
+.logNumInput:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.optionsFlex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.pillBtn {
+  padding: 0.6rem 1.2rem;
+  border: 1px solid #E5E7EB;
+  border-radius: 1.5rem;
+  background: white;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #374151;
+}
+
+.pillBtn:hover {
+  background-color: var(--bg-soft);
+  border-color: var(--primary-soft);
+}
+
+.pillBtnActive {
+  background-color: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* History Section */
+.historySection {
+  margin-top: 3rem;
+  margin-bottom: 2rem;
+}
+
+.historyTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1F2937;
+  margin-bottom: 1.5rem;
+}
+
+.historyList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.historyItem {
+  background-color: white;
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  padding: 1.5rem 2rem;
+  transition: box-shadow 0.2s;
+}
+
+.historyItem:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+.historyItemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #F3F4F6;
+  padding-bottom: 0.5rem;
+}
+
+.historyItemDate {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.historyGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.historyGridItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.historyGridLabel {
+  font-size: 0.8rem;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.historyGridVal {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1F2937;
+}
+
+.historyNotes {
+  margin-top: 0.75rem;
+  font-size: 0.95rem;
+  color: #4B5563;
+  font-style: italic;
+  background-color: #FAFAFA;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+}
+
+.rangeInput {
+  width: 100%;
+  accent-color: var(--primary);
+  margin-top: 0.5rem;
+  height: 6px;
+  border-radius: 3px;
+  background: #E5E7EB;
+  outline: none;
+}
+
+.rangeVal {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 1.1rem;
+}
+
+.symptomRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  background: #FAFAFA;
+  padding: 0.75rem 1.25rem;
+  border-radius: 1rem;
+  border: 1px solid #F3F4F6;
+}
+
+.symptomRowLabel {
+  font-weight: 600;
+  color: #374151;
+  min-width: 150px;
+}
+
+.deleteBtn {
+  background-color: #FEE2E2;
+  color: #EF4444;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.deleteBtn:hover {
+  background-color: #EF4444;
+  color: white;
+}
+
+.reportBtn {
+  background-color: #3B82F6;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 2rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.2);
+}
+
+.reportBtn:hover {
+  background-color: #2563EB;
+  transform: translateY(-1px);
+}
+
+/* Report Modal */
+.reportOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 3000;
+  padding: 1.5rem;
+}
+
+.reportContent {
+  background: white;
+  width: 100%;
+  max-width: 700px;
+  border-radius: 2rem;
+  padding: 2.5rem;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+}
+
+.alertBox {
+  background-color: #FEF2F2;
+  border: 1px solid #FEE2E2;
+  border-left: 5px solid #EF4444;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  margin-bottom: 2rem;
+}
+
+.alertBoxTitle {
+  font-weight: 700;
+  color: #991B1B;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.alertItem {
+  color: #B91C1C;
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+}
+
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.reportStatCard {
+  background: #FAFAFA;
+  border: 1px solid #F3F4F6;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  text-align: center;
+}
+
+.reportStatNum {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.reportStatLabel {
+  font-size: 0.8rem;
+  color: #9CA3AF;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+@media (max-width: 600px) {
+  .grid3 {
+    grid-template-columns: 1fr;
+  }
+  .symptomRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}

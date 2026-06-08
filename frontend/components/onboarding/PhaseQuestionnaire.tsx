@@ -41,7 +41,7 @@ export default function PhaseQuestionnaire({ phase }: { phase: string }) {
         const pcosList = answers.ML_PCOS_S || [];
         const combinedSymptomsList = [...symList, ...pmsList, ...pcosList];
         
-        const modelSymptomsObj: Record<string, string | number> = {
+        const modelSymptomsObj: Record<string, any> = {
           Exercise_Frequency:          answers.Exercise_Frequency,
           Sleep_Duration:              answers.Sleep_Duration,
           Stress_Level_1to5:           answers.Stress_Level_1to5,
@@ -50,11 +50,32 @@ export default function PhaseQuestionnaire({ phase }: { phase: string }) {
           Caffeine_Intake:             answers.Caffeine_Intake,
           Water_Intake_Litres:         answers.Water_Intake_Litres,
           Overall_Energy_Level:        answers.Overall_Energy_Level,
+          sleep_quality:               answers.sleep,
+          energy:                      answers.energy,
+          activity:                    answers.activity,
+          water_intake:                answers.water_intake,
+          emotional_wellbeing:         answers.emotional_wellbeing,
         };
+
+        if (answers.pregnancy_week) {
+          const currentWeekInt = parseInt(answers.pregnancy_week);
+          if (!isNaN(currentWeekInt)) {
+            modelSymptomsObj.pregnancy_week_start = currentWeekInt;
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - (currentWeekInt * 7));
+            modelSymptomsObj.pregnancy_start_date = startDate.toISOString().split('T')[0];
+          }
+        }
 
         // Add binary flags for ML model items
         combinedSymptomsList.forEach((sym: string) => {
           modelSymptomsObj[sym] = 1;
+        });
+
+        // Add pregnant symptoms flags
+        const pregnantSymptoms = answers.symptoms || [];
+        pregnantSymptoms.forEach((sym: string) => {
+          modelSymptomsObj[`sym_${sym}`] = 1;
         });
 
         // Map frontend answers to backend expectations

@@ -274,7 +274,9 @@ export const PHASE_FLOWS: Record<string, Question[]> = {
     }
   ],
   pregnant: [
-    { id: 'trimester', text: 'Trimester', type: 'select', options: [{label: '1st', value: '1st'}, {label: '2nd', value: '2nd'}, {label: '3rd', value: '3rd'}] },
+    { id: 'pregnancy_week', text: 'Which week of pregnancy are you in?', type: 'input', unit: 'weeks', placeholder: 'e.g. 18' },
+    { id: 'height_cm', text: 'What is your height? (cm)', type: 'input', unit: 'cm', placeholder: 'e.g. 165' },
+    { id: 'Weight_kg', text: 'What is your weight? (kg)', type: 'input', unit: 'kg', placeholder: 'e.g. 60' },
     { id: 'sleep', text: 'Sleep quality', type: 'select', options: [{label: 'Poor', value: 'poor'}, {label: 'Okay', value: 'okay'}, {label: 'Good', value: 'good'}] },
     { id: 'energy', text: 'Energy', type: 'select', options: [{label: 'Low', value: 'low'}, {label: 'Medium', value: 'medium'}, {label: 'High', value: 'high'}] },
     { id: 'symptoms', text: 'Symptoms', type: 'multi', options: [{label: 'Nausea', value: 'nausea'}, {label: 'Fatigue', value: 'fatigue'}, {label: 'Back pain', value: 'back_pain'}, {label: 'Heartburn', value: 'heartburn'}] },

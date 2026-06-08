@@ -327,18 +327,87 @@ def update_profile():
     data    = request.json
     user_id = data["user_id"]
     try:
-        supabase.table("health_profile").update({
-            "exercise_frequency":       ordinal_maps["exercise"].get(data.get("exercise_frequency", "Sometimes"), 1),
-            "sleep_duration":           ordinal_maps["sleep"].get(data.get("sleep_duration", "7-9 hrs"), 2),
-            "diet_type":                data.get("diet_type", "Mixed"),
-            "caffeine_intake":          ordinal_maps["caffeine"].get(data.get("caffeine_intake", "Sometimes"), 2),
-            "junk_food_frequency":      data.get("junk_food_frequency", 3),
-            "sugar_intake":             data.get("sugar_intake", 3),
-            "water_intake":             data.get("water_intake", 2.0),
-            "missed_periods_frequency": ordinal_maps["missed"].get(data.get("missed_periods_frequency", "Never"), 0),
-        }).eq("user_id", user_id).execute()
+        # 1. Update height, weight, and BMI if present
+        if "height_cm" in data or "weight_kg" in data:
+            user_res = supabase.table("users").select("height_cm", "weight_kg").eq("id", user_id).execute()
+            h = data.get("height_cm")
+            w = data.get("weight_kg")
+            if user_res.data:
+                if h is None:
+                    h = user_res.data[0].get("height_cm") or 160
+                if w is None:
+                    w = user_res.data[0].get("weight_kg") or 60
+            h = float(h)
+            w = float(w)
+            bmi = round(w / (h / 100) ** 2, 1)
+            supabase.table("users").update({
+                "height_cm": h,
+                "weight_kg": w,
+                "bmi":       bmi
+            }).eq("id", user_id).execute()
+
+        # 2. Get existing health profile to update model_symptoms
+        prof_res = supabase.table("health_profile").select("model_symptoms").eq("user_id", user_id).execute()
+        model_symptoms = {}
+        has_profile = False
+        if prof_res.data:
+            model_symptoms = prof_res.data[0].get("model_symptoms") or {}
+            has_profile = True
+
+        if "pregnancy_week_start" in data:
+            model_symptoms["pregnancy_week_start"] = data["pregnancy_week_start"]
+        if "pregnancy_start_date" in data:
+            model_symptoms["pregnancy_start_date"] = data["pregnancy_start_date"]
+        if "pregnancy_logs" in data:
+            model_symptoms["pregnancy_logs"] = data["pregnancy_logs"]
+
+        if "trimester" in data:
+            model_symptoms["trimester"] = data["trimester"]
+        if "exercise_frequency" in data:
+            model_symptoms["Exercise_Frequency"] = data["exercise_frequency"]
+        if "sleep_duration" in data:
+            model_symptoms["Sleep_Duration"] = data["sleep_duration"]
+        if "junk_food_frequency" in data:
+            model_symptoms["Junk_Food_Frequency_1to5"] = data["junk_food_frequency"]
+        if "sugar_intake" in data:
+            model_symptoms["Sugar_Intake_Frequency_1to5"] = data["sugar_intake"]
+        if "caffeine_intake" in data:
+            model_symptoms["Caffeine_Intake"] = data["caffeine_intake"]
+        if "water_intake" in data:
+            model_symptoms["Water_Intake_Litres"] = data["water_intake"]
+
+        db_updates = {}
+        if "exercise_frequency" in data:
+            db_updates["exercise_frequency"] = ordinal_maps["exercise"].get(data["exercise_frequency"], 1)
+        if "sleep_duration" in data:
+            db_updates["sleep_duration"] = ordinal_maps["sleep"].get(data["sleep_duration"], 2)
+        if "diet_type" in data:
+            db_updates["diet_type"] = data["diet_type"]
+        if "caffeine_intake" in data:
+            db_updates["caffeine_intake"] = ordinal_maps["caffeine"].get(data["caffeine_intake"], 2)
+        if "junk_food_frequency" in data:
+            db_updates["junk_food_frequency"] = data["junk_food_frequency"]
+        if "sugar_intake" in data:
+            db_updates["sugar_intake"] = data["sugar_intake"]
+        if "water_intake" in data:
+            db_updates["water_intake"] = data["water_intake"]
+        if "missed_periods_frequency" in data:
+            db_updates["missed_periods_frequency"] = ordinal_maps["missed"].get(data["missed_periods_frequency"], 0)
+        
+        # Always update model_symptoms
+        db_updates["model_symptoms"] = model_symptoms
+
+        if has_profile:
+            supabase.table("health_profile").update(db_updates).eq("user_id", user_id).execute()
+        else:
+            db_updates["user_id"] = user_id
+            db_updates["cycle_length"] = 28
+            db_updates["periods_regular"] = 1
+            supabase.table("health_profile").insert(db_updates).execute()
+            
         return jsonify({"success": True}), 200
     except Exception as e:
+        print(f"ERROR in profile update: {str(e)}")
         return jsonify({"error": str(e)}), 400
 
 
@@ -358,6 +427,91 @@ def daily_log():
             "period_started": data.get("period_started", False),
             "energy_level":   ordinal_maps["energy"].get(data.get("energy_level", "Medium"), 1),
         }).execute()
+
+        # Update weight in users table if passed
+        weight_kg = data.get("weight_kg")
+        user_res = supabase.table("users").select("height_cm", "life_phase").eq("id", user_id).execute()
+        is_pregnant = False
+        if user_res.data:
+            is_pregnant = (user_res.data[0].get("life_phase") == "pregnant")
+
+        if weight_kg:
+            h = 160.0
+            if user_res.data:
+                h = user_res.data[0].get("height_cm") or 160.0
+            h = float(h)
+            w = float(weight_kg)
+            bmi = round(w / (h / 100) ** 2, 1)
+            supabase.table("users").update({
+                "weight_kg": w,
+                "bmi":       bmi
+            }).eq("id", user_id).execute()
+
+        # Save pregnancy log inside model_symptoms in health_profile
+        if is_pregnant:
+            prof_res = supabase.table("health_profile").select("model_symptoms").eq("user_id", user_id).execute()
+            
+            has_profile = False
+            model_symptoms = {}
+            pregnancy_logs = []
+            
+            if prof_res.data:
+                profile = prof_res.data[0]
+                model_symptoms = profile.get("model_symptoms") or {}
+                pregnancy_logs = model_symptoms.get("pregnancy_logs", [])
+                has_profile = True
+                
+            today_str = date.today().isoformat()
+            
+            # Find and update existing log for today, or append new one
+            existing_log = next((log for log in pregnancy_logs if log.get("date") == today_str), None)
+            
+            log_entry = {
+                "date":                 today_str,
+                "pregnancy_week_start": data.get("pregnancy_week_start"),
+                "weight_kg":            data.get("weight_kg"),
+                "bp":                   data.get("bp"),
+                "symptoms":             data.get("symptoms"),
+                "felt_movement":        data.get("felt_movement"),
+                "kick_count":           data.get("kick_count"),
+                "movement_type":        data.get("movement_type"),
+                "sleep_hours":          data.get("sleep_hours"),
+                "sleep_rating":         data.get("sleep_rating"),
+                "water_glasses":        data.get("water_glasses"),
+                "meals_count":          data.get("meals_count"),
+                "took_vitamins":        data.get("took_vitamins"),
+                "avoided_cravings":     data.get("avoided_cravings"),
+                "mood":                 data.get("mood_label"),
+                "stress_score":         data.get("stress_score"),
+                "emotional_notes":      data.get("emotional_notes"),
+                "exercise":             data.get("exercise"),
+                "activity_type":        data.get("activity_type"),
+                "activity_duration":    data.get("activity_duration"),
+                "bleeding":             data.get("bleeding"),
+                "fluid_leakage":        data.get("fluid_leakage"),
+                "contractions":         data.get("contractions"),
+                "unusual_symptoms":     data.get("unusual_symptoms"),
+                "notes":                data.get("notes")
+            }
+            
+            if existing_log:
+                existing_log.update(log_entry)
+            else:
+                pregnancy_logs.insert(0, log_entry) # newest first
+                
+            model_symptoms["pregnancy_logs"] = pregnancy_logs
+            
+            if has_profile:
+                supabase.table("health_profile").update({
+                    "model_symptoms": model_symptoms
+                }).eq("user_id", user_id).execute()
+            else:
+                supabase.table("health_profile").insert({
+                    "user_id": user_id,
+                    "cycle_length": 28,
+                    "periods_regular": 1,
+                    "model_symptoms": model_symptoms
+                }).execute()
 
         # If period started today → update last_period_date
         if data.get("period_started"):
@@ -542,6 +696,8 @@ def get_dashboard_data(user_id):
             "needs_details": needs_details,
             "wellness": {
                 "bmi": user.get("bmi", 22.0),
+                "height_cm": user.get("height_cm"),
+                "weight_kg": user.get("weight_kg"),
                 "riskScore": prediction.get("pcos_risk_score", 0)
             }
         }), 200
@@ -634,6 +790,7 @@ def get_user_profile(user_id):
                 "periods_regular":   profile.get("periods_regular"),
                 "pcos_diagnosed":    profile.get("pcos_diagnosed"),
                 "bleeding_duration": profile.get("bleeding_duration"),
+                "model_symptoms":    profile.get("model_symptoms") or {},
             },
             "prediction": {
                 "cycle_phase":       pred.get("cycle_phase"),
