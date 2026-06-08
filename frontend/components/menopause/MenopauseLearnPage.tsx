@@ -247,11 +247,6 @@ export default function MenopauseLearnPage() {
                   <h3>HRT Explained</h3>
                   <p>Understanding hormone replacement therapy options</p>
                </div>
-               <div className={styles.videoCard}>
-                  <Play className={styles.videoIcon} size={24} />
-                  <h3>Bone Health After Menopause</h3>
-                  <p>Preventing osteoporosis and maintaining strong bones</p>
-               </div>
             </div>
             <p style={{fontSize: '0.8rem', color: '#6B7280', textAlign: 'center', marginTop: '1.5rem'}}>Search for these topics on trusted sources like Mayo Clinic, Cleveland Clinic, Johns Hopkins Medicine, or the North American Menopause Society (NAMS).</p>
           </motion.section>

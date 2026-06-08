@@ -29,8 +29,7 @@ export default function PostpartumLearnPage() {
   const videos = [
     { title: "Postpartum Recovery Guide", author: "Mayo Clinic", duration: "11:30", color: "#F08A8A" },
     { title: "Newborn Care Basics", author: "Cleveland Clinic", duration: "14:20", color: "#C04A55" },
-    { title: "Breastfeeding Support", author: "La Leche League", duration: "18:45", color: "#FCD3A1" },
-    { title: "Postpartum Mental Health", author: "Psychology Today", duration: "12:00", color: "#A03A45" }
+    { title: "Breastfeeding Support", author: "La Leche League", duration: "18:45", color: "#FCD3A1" }
   ];
 
   const topics = [

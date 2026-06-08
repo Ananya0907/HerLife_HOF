@@ -117,6 +117,12 @@
   gap: 1.5rem;
 }
 
+.videoGrid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
 /* Base Cards */
 .cardBase {
   border-radius: 1rem;
@@ -265,7 +271,7 @@
 }
 
 @media (max-width: 900px) {
-  .grid2 {
+  .grid2, .videoGrid3 {
     grid-template-columns: 1fr;
   }
 }

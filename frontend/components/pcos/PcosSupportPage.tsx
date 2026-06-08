@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Heart, 
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import styles from './PcosSupport.module.css';
 import DashboardNavbar from '../shared/DashboardNavbar';
+import { API_BASE_URL } from '@/utils/api';
 
 export default function PcosSupportPage() {
   const router = useRouter();
@@ -30,6 +31,104 @@ export default function PcosSupportPage() {
     'Acne': false,
     'Hair thinning': false
   });
+
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isGuest, setIsGuest] = useState(true);
+
+  useEffect(() => {
+    const userId = localStorage.getItem('user_id');
+    if (!userId) {
+      setIsGuest(true);
+      // Mock history for guest
+      setHistory([
+        {
+          date: '2026-06-07T10:00:00Z',
+          symptoms: {
+            'Irregular periods': true,
+            'Excessive hair growth': false,
+            'Weight gain': true,
+            'Acne': false,
+            'Hair thinning': false
+          }
+        },
+        {
+          date: '2026-05-30T14:30:00Z',
+          symptoms: {
+            'Irregular periods': true,
+            'Excessive hair growth': false,
+            'Weight gain': false,
+            'Acne': false,
+            'Hair thinning': false
+          }
+        }
+      ]);
+      return;
+    }
+
+    setIsGuest(false);
+    const fetchSymptoms = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`${API_BASE_URL}/api/pcos-symptoms/${userId}`);
+        const data = await res.json();
+        if (data.pcos_active) {
+          setSymptoms(prev => ({
+            ...prev,
+            ...data.pcos_active
+          }));
+        }
+        if (data.pcos_history) {
+          setHistory(data.pcos_history);
+        }
+      } catch (e) {
+        console.error('Error fetching PCOS symptoms:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSymptoms();
+  }, []);
+
+  const handleUpdate = async () => {
+    const userId = localStorage.getItem('user_id');
+    if (!userId) {
+      const nowStr = new Date().toISOString();
+      setHistory(prev => [
+        { date: nowStr, symptoms: { ...symptoms } },
+        ...prev
+      ]);
+      alert("Demo Mode: Symptoms updated locally. Log in to save permanently!");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_BASE_URL}/api/pcos-symptoms`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          symptoms: symptoms
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setHistory(data.pcos_history);
+        alert("PCOS symptoms updated successfully!");
+      } else {
+        alert("Failed to update symptoms: " + data.error);
+      }
+    } catch (e) {
+      console.error("Error updating symptoms:", e);
+      alert("Error connecting to server. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const [selectedStory, setSelectedStory] = useState<{id: number, user: string, title: string, fullText: string} | null>(null);
 
@@ -110,9 +209,89 @@ export default function PcosSupportPage() {
               </div>
             ))}
           </div>
-          <button className={styles.updateBtn} onClick={() => console.log('Symptoms Updated:', symptoms)}>
-            Update Symptoms
-          </button>
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+            <button className={styles.updateBtn} onClick={handleUpdate} disabled={loading} style={{ flex: 1, margin: 0 }}>
+              {loading ? 'Updating...' : 'Update Symptoms'}
+            </button>
+            <button 
+              className={styles.reportBtn} 
+              onClick={() => router.push('/learn/report?type=pcos')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                fontSize: '1rem',
+                fontWeight: 600,
+                color: 'white',
+                backgroundColor: 'var(--primary)',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '2rem',
+                transition: 'all 0.2s',
+                boxShadow: '0 4px 12px rgba(209, 77, 114, 0.2)',
+                flex: 1
+              }}
+            >
+              Generate PDF Report
+            </button>
+          </div>
+        </div>
+
+        {/* Symptom Logging History */}
+        <div className={styles.card}>
+          <div className={styles.sectionTitle}>
+            <Activity size={24} color="var(--primary)" /> Symptom Logging History
+          </div>
+          {isGuest && (
+            <div style={{ backgroundColor: '#FFFBEB', color: '#D97706', padding: '0.75rem 1rem', borderRadius: '0.5rem', fontSize: '0.9rem', marginBottom: '1rem' }}>
+              You are in <b>Demo Mode</b>. History entries are saved locally in memory. Log in to sync across devices.
+            </div>
+          )}
+          {history.length > 0 ? (
+            <div className={styles.historyTableWrapper}>
+              <table className={styles.historyTable}>
+                <thead>
+                  <tr>
+                    <th>Log Timestamp</th>
+                    <th>Reported PCOS Symptoms</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((entry, index) => {
+                    const formattedDate = new Date(entry.date).toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    });
+                    return (
+                      <tr key={index}>
+                        <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{formattedDate}</td>
+                        <td>
+                          {Object.entries(entry.symptoms).map(([name, active]) => (
+                            <span 
+                              key={name} 
+                              className={active ? styles.activeBadge : styles.inactiveBadge}
+                            >
+                              {name}
+                            </span>
+                          ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '2rem', border: '1px dashed var(--border)', borderRadius: '1rem', color: 'var(--foreground-muted)' }}>
+              No symptom logs recorded yet. Select symptoms above and press "Update Symptoms" to begin tracking.
+            </div>
+          )}
         </div>
 
         {/* Advice Grid */}

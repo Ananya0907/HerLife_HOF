@@ -143,7 +143,12 @@ def build_model_input(profile, daily):
     # Merge dynamic ML symptoms explicitly recorded by the user (or default empty)
     symptoms = profile.get("model_symptoms") or {}
     for sym_key, sym_val in symptoms.items():
-        base_input[sym_key] = float(sym_val)
+        if sym_key in ["pcos_active", "pcos_history"]:
+            continue
+        try:
+            base_input[sym_key] = float(sym_val)
+        except (ValueError, TypeError):
+            pass
 
     return base_input
 
@@ -695,6 +700,131 @@ def update_tracker():
             return jsonify({"success": True}), 200
     except Exception as e:
         print(f"ERROR in update-tracker: {str(e)}")
+        return jsonify({"error": str(e)}), 400
+
+
+# ── 11.1 PCOS SYMPTOMS GET & POST ──
+@app.route('/api/pcos-symptoms/<user_id>', methods=['GET'])
+def get_pcos_symptoms(user_id):
+    try:
+        # Fetch profile
+        prof_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+        if not prof_res.data:
+            # Auto-heal profile
+            supabase.table("health_profile").insert({
+                "user_id": user_id,
+                "last_period_date": date.today().isoformat(),
+                "cycle_length": 28,
+                "periods_regular": 1,
+                "model_symptoms": {}
+            }).execute()
+            prof_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+
+        profile = prof_res.data[0]
+        model_symptoms = profile.get("model_symptoms") or {}
+        
+        # Get active symptoms and history log
+        pcos_active = model_symptoms.get("pcos_active", {
+            "Irregular periods": True,
+            "Excessive hair growth": False,
+            "Weight gain": True,
+            "Acne": False,
+            "Hair thinning": False
+        })
+        pcos_history = model_symptoms.get("pcos_history", [])
+
+        return jsonify({
+            "pcos_active": pcos_active,
+            "pcos_history": pcos_history
+        }), 200
+    except Exception as e:
+        print(f"ERROR in get_pcos_symptoms: {str(e)}")
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route('/api/pcos-symptoms', methods=['POST'])
+def save_pcos_symptoms():
+    data = request.json
+    user_id = data.get("user_id")
+    symptoms = data.get("symptoms") # a dict like {"Irregular periods": true, ...}
+    if not user_id or symptoms is None:
+        return jsonify({"error": "user_id and symptoms are required"}), 400
+
+    try:
+        # Fetch existing profile
+        prof_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+        if not prof_res.data:
+            return jsonify({"error": "Profile not found"}), 404
+
+        profile = prof_res.data[0]
+        model_symptoms = profile.get("model_symptoms") or {}
+
+        # Add to history
+        pcos_history = model_symptoms.get("pcos_history", [])
+        
+        # Get current time string in ISO format
+        from datetime import datetime
+        now_str = datetime.utcnow().isoformat() + "Z"
+        
+        # Build new entry
+        new_entry = {
+            "date": now_str,
+            "symptoms": symptoms
+        }
+        pcos_history.insert(0, new_entry) # Put newest on top
+
+        # Save to model_symptoms
+        model_symptoms["pcos_active"] = symptoms
+        model_symptoms["pcos_history"] = pcos_history
+
+        # Update model features mapped from symptoms
+        model_symptoms.update({
+            "Difficulty_Losing_Weight": 1.0 if symptoms.get("Weight gain") else 0.0,
+            "Skin_Condition_During_Cycle": 2.0 if symptoms.get("Acne") else 0.0,
+            "Hair_Fall_Level": 2.0 if symptoms.get("Hair thinning") else 0.0,
+        })
+
+        # Update in DB
+        supabase.table("health_profile").update({
+            "model_symptoms": model_symptoms
+        }).eq("user_id", user_id).execute()
+
+        # Re-run predictions to calculate new PCOS risk
+        user_res = supabase.table("users").select("*").eq("id", user_id).execute()
+        if user_res.data:
+            user = user_res.data[0]
+            profile_combined = {**profile, **user, "model_symptoms": model_symptoms}
+            daily_mock = {"stress_level": 3, "sleep_quality": 3, "mood": 3, "water_glasses": 6}
+            model_input = build_model_input(profile_combined, daily_mock)
+            
+            # PCOS Prediction (XGBoost)
+            pcos_df = pd.DataFrame([{col: model_input.get(col, 0) for col in pcos_features}]).astype(float)
+            pcos_risk = round(float(pcos_model.predict_proba(pcos_df)[0][1]) * 100, 1)
+            
+            # Period Prediction (SVR)
+            period_df = pd.DataFrame([{col: model_input.get(col, 0) for col in period_features}]).astype(float)
+            period_sc = scaler.transform(period_df)
+            days_left = max(0, round(float(svr_model.predict(period_sc)[0])))
+            next_period = (date.today() + timedelta(days=days_left)).isoformat()
+            cycle_phase = get_cycle_phase(model_input["Days_Since_Last_Period"], model_input["Avg_Cycle_Length_days"])
+            
+            prediction = {
+                "user_id": user_id,
+                "cycle_phase": cycle_phase,
+                "days_until_period": days_left,
+                "pcos_risk_score": pcos_risk,
+                "next_period_date": next_period
+            }
+            supabase.table("predictions").upsert(prediction).execute()
+
+        return jsonify({
+            "success": True,
+            "pcos_active": symptoms,
+            "pcos_history": pcos_history
+        }), 200
+
+    except Exception as e:
+        print(f"ERROR in save_pcos_symptoms: {str(e)}")
         return jsonify({"error": str(e)}), 400
 
 

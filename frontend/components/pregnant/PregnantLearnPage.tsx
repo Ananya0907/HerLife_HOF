@@ -69,12 +69,6 @@ export default function PregnantLearnPage() {
       source: "Johns Hopkins",
       time: "15:20",
       thumbClass: styles.thumbLightGreen
-    },
-    {
-      title: "Prenatal Care Essentials",
-      source: "Medical Insights",
-      time: "10:15",
-      thumbClass: styles.thumbYellow
     }
   ];
 

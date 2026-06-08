@@ -405,3 +405,63 @@
     display: none;
   }
 }
+
+.historyTableWrapper {
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+.historyTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.historyTable th {
+  background-color: var(--accent);
+  color: var(--primary);
+  font-weight: 700;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.historyTable td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground);
+}
+
+.historyTable tr:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.01);
+}
+
+.activeBadge {
+  display: inline-block;
+  background-color: var(--accent);
+  color: var(--primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.5rem;
+  margin-right: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.inactiveBadge {
+  display: inline-block;
+  background-color: #F3F4F6;
+  color: #9CA3AF;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.5rem;
+  margin-right: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.reportBtn:hover {
+  background-color: #b83e60;
+  transform: translateY(-1px);
+}
+
