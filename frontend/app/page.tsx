@@ -13,29 +13,24 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check for existing localStorage session (regular login)
-    const userId = localStorage.getItem('user_id');
-    const lifePhase = localStorage.getItem('life_phase');
-    if (userId) {
-      if (lifePhase && lifePhase !== 'pending') {
-        router.push(`/dashboard/${lifePhase}`);
-      } else {
-        router.push('/onboarding');
-      }
-      return;
-    }
-
-    // Check for Supabase Google OAuth session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        router.push('/onboarding'); // Google users go to onboarding first
-      }
-    });
-
-    // Listen for OAuth redirect coming back
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        router.push('/onboarding');
+        const email = session.user.email;
+
+        // Check if user exists in your users table
+        const { data: userData } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', email)
+          .single();
+
+        if (userData && userData.life_phase && userData.life_phase !== 'pending') {
+          // Existing user → go to dashboard
+          router.push(`/dashboard/${userData.life_phase}`);
+        } else {
+          // New user → go to onboarding
+          router.push('/onboarding');
+        }
       }
     });
 
