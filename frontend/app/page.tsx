@@ -6,12 +6,14 @@ import AuthLayout from '../components/auth/AuthLayout';
 import LoginForm from '../components/auth/LoginForm';
 import SignUpForm from '../components/auth/SignUpForm';
 import { AnimatePresence, motion } from 'framer-motion';
+import { supabase } from '../components/auth/supabaseClient';
 
 export default function Home() {
   const [isLogin, setIsLogin] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
+    // Check for existing localStorage session (regular login)
     const userId = localStorage.getItem('user_id');
     const lifePhase = localStorage.getItem('life_phase');
     if (userId) {
@@ -20,9 +22,25 @@ export default function Home() {
       } else {
         router.push('/onboarding');
       }
+      return;
     }
-  }, [router]);
 
+    // Check for Supabase Google OAuth session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        router.push('/onboarding'); // Google users go to onboarding first
+      }
+    });
+
+    // Listen for OAuth redirect coming back
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        router.push('/onboarding');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [router]);
   const handleLogin = () => {
     const lifePhase = localStorage.getItem('life_phase');
     if (lifePhase && lifePhase !== 'pending') {
@@ -47,8 +65,8 @@ export default function Home() {
             exit={{ opacity: 0, x: 20 }}
             transition={{ duration: 0.3 }}
           >
-            <LoginForm 
-              onSwitchToSignUp={() => setIsLogin(false)} 
+            <LoginForm
+              onSwitchToSignUp={() => setIsLogin(false)}
               onLogin={handleLogin}
             />
           </motion.div>
@@ -60,8 +78,8 @@ export default function Home() {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
           >
-            <SignUpForm 
-              onSwitchToLogin={() => setIsLogin(true)} 
+            <SignUpForm
+              onSwitchToLogin={() => setIsLogin(true)}
               onSignUp={handleSignUp}
             />
           </motion.div>
