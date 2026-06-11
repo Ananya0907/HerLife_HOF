@@ -15,20 +15,15 @@ export default function Home() {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        const email = session.user.email;
-
-        // Check if user exists in your users table
         const { data: userData } = await supabase
           .from('users')
-          .select('*')
-          .eq('email', email)
+          .select('life_phase')
+          .eq('email', session.user.email)
           .single();
 
-        if (userData && userData.life_phase && userData.life_phase !== 'pending') {
-          // Existing user → go to dashboard
+        if (userData) {
           router.push(`/dashboard/${userData.life_phase}`);
         } else {
-          // New user → go to onboarding
           router.push('/onboarding');
         }
       }
