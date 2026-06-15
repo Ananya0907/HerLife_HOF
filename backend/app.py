@@ -7,7 +7,7 @@ import os
 import joblib
 import numpy as np
 import pandas as pd
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 load_dotenv()
 
@@ -151,6 +151,160 @@ def build_model_input(profile, daily):
             pass
 
     return base_input
+
+def add_manual_correction(user_id, correct_date):
+    try:
+        prof_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+        if not prof_res.data:
+            return
+        profile = prof_res.data[0]
+        model_symptoms = profile.get("model_symptoms") or {}
+        
+        # Store in period_corrections list
+        corrections = model_symptoms.get("period_corrections") or []
+        
+        # Avoid duplicate date entries
+        if correct_date not in corrections:
+            corrections.append(correct_date)
+            
+        model_symptoms["period_corrections"] = corrections
+        
+        supabase.table("health_profile").update({
+            "model_symptoms": model_symptoms,
+            "last_period_date": correct_date
+        }).eq("user_id", user_id).execute()
+        
+    except Exception as e:
+        print(f"Error adding manual correction: {e}")
+
+def calculate_rolling_cycle_length(user_id):
+    try:
+        prof_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+        if not prof_res.data:
+            return 28
+
+        profile = prof_res.data[0]
+        
+        dates = set()
+        
+        # Add configured last period date
+        last_period = profile.get("last_period_date")
+        if last_period:
+            dates.add(last_period)
+            
+        # Add dates from daily_logs where period_started is True
+        logs_res = supabase.table("daily_logs").select("log_date").eq("user_id", user_id).eq("period_started", True).execute()
+        if logs_res.data:
+            for log in logs_res.data:
+                if log.get("log_date"):
+                    dates.add(log["log_date"])
+                    
+        # Add manual correction history if stored in model_symptoms
+        model_symptoms = profile.get("model_symptoms") or {}
+        corrections = model_symptoms.get("period_corrections") or []
+        for d in corrections:
+            dates.add(d)
+
+        # Sort dates
+        sorted_dates = sorted(list(dates))
+        if len(sorted_dates) < 2:
+            return profile.get("cycle_length") or 28
+
+        cycle_lengths = []
+        for i in range(1, len(sorted_dates)):
+            d1 = date.fromisoformat(sorted_dates[i-1])
+            d2 = date.fromisoformat(sorted_dates[i])
+            diff = (d2 - d1).days
+            # Filter biologically plausible values (18 to 45 days)
+            if 18 <= diff <= 45:
+                cycle_lengths.append(diff)
+
+        if not cycle_lengths:
+            return profile.get("cycle_length") or 28
+
+        # Weighted rolling average
+        weighted_sum = 0
+        total_weight = 0
+        for idx, length in enumerate(cycle_lengths):
+            weight = idx + 1
+            weighted_sum += length * weight
+            total_weight += weight
+
+        avg_cycle = round(weighted_sum / total_weight)
+        
+        # Update health_profile in database
+        supabase.table("health_profile").update({
+            "cycle_length": avg_cycle
+        }).eq("user_id", user_id).execute()
+        
+        return avg_cycle
+    except Exception as e:
+        print(f"Error calculating rolling cycle: {e}")
+        return 28
+
+def is_lifestyle_irregular(user_id):
+    try:
+        prof_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+        if not prof_res.data:
+            return False
+        profile = prof_res.data[0]
+        
+        model_symptoms = profile.get("model_symptoms") or {}
+        tracker_logs = model_symptoms.get("tracker_logs") or []
+        
+        sugar_levels = []
+        junk_levels = []
+        caffeine_levels = []
+        
+        for entry in tracker_logs[-10:]:
+            lifestyle = entry.get("lifestyle", {})
+            if "sugar" in lifestyle:
+                sugar_levels.append(float(lifestyle["sugar"]))
+            if "junk_food" in lifestyle:
+                junk_levels.append(float(lifestyle["junk_food"]))
+            if "caffeine" in lifestyle:
+                caffeine_levels.append(float(lifestyle["caffeine"]))
+                
+        if not sugar_levels and profile.get("sugar_intake") is not None:
+            sugar_levels.append(float(profile["sugar_intake"]))
+        if not junk_levels and profile.get("junk_food_frequency") is not None:
+            junk_levels.append(float(profile["junk_food_frequency"]))
+        if not caffeine_levels and profile.get("caffeine_intake") is not None:
+            caffeine_levels.append(float(profile["caffeine_intake"]))
+            
+        avg_sugar = sum(sugar_levels) / len(sugar_levels) if sugar_levels else 3.0
+        avg_junk = sum(junk_levels) / len(junk_levels) if junk_levels else 3.0
+        avg_caffeine = sum(caffeine_levels) / len(caffeine_levels) if caffeine_levels else 2.0
+        
+        return (avg_sugar >= 4.0) or (avg_junk >= 4.0) or (avg_caffeine >= 2.5) or (avg_sugar + avg_junk + avg_caffeine >= 9.5)
+    except Exception as e:
+        print(f"Error checking lifestyle: {e}")
+        return False
+
+def format_prediction_response(user_id, days_left, next_period_date_str):
+    try:
+        # Convert days_left to float then round to int
+        d_val = round(float(days_left))
+    except (ValueError, TypeError):
+        d_val = 28
+        
+    if is_lifestyle_irregular(user_id):
+        days_min = max(0, d_val - 3)
+        days_max = d_val + 3
+        
+        today = date.today()
+        date_min = (today + timedelta(days=days_min)).isoformat()
+        date_max = (today + timedelta(days=days_max)).isoformat()
+        
+        return {
+            "days_until_period": f"{days_min} to {days_max}",
+            "next_period_date": f"{date_min} to {date_max}"
+        }
+    else:
+        return {
+            "days_until_period": d_val,
+            "next_period_date": next_period_date_str
+        }
 
 # ────────────────────────────────────────────────────────────
 # ROUTES
@@ -513,11 +667,10 @@ def daily_log():
                     "model_symptoms": model_symptoms
                 }).execute()
 
-        # If period started today → update last_period_date
+        # If period started today → update last_period_date, log it as a correction, and recalculate rolling average
         if data.get("period_started"):
-            supabase.table("health_profile").update({
-                "last_period_date": date.today().isoformat()
-            }).eq("user_id", user_id).execute()
+            add_manual_correction(user_id, date.today().isoformat())
+            calculate_rolling_cycle_length(user_id)
 
         # Fetch last 7 days logs for averaging
         recent_logs = supabase.table("daily_logs")\
@@ -586,7 +739,7 @@ def daily_log():
             model_input["Avg_Cycle_Length_days"]
         )
 
-        # Save predictions
+        # Save predictions (store nominal values in DB)
         supabase.table("predictions").upsert({
             "user_id":           user_id,
             "cycle_phase":       cycle_phase,
@@ -595,11 +748,12 @@ def daily_log():
             "next_period_date":  next_period,
         }).execute()
 
+        formatted_pred = format_prediction_response(user_id, days_left, next_period)
         return jsonify({
             "success":           True,
             "cycle_phase":       cycle_phase,
-            "days_until_period": days_left,
-            "next_period_date":  next_period,
+            "days_until_period": formatted_pred["days_until_period"],
+            "next_period_date":  formatted_pred["next_period_date"],
             "pcos_risk_score":   pcos_risk,
         }), 200
 
@@ -615,7 +769,11 @@ def get_predictions(user_id):
             .select("*").eq("user_id", user_id).execute()
         if not result.data:
             return jsonify({"error": "No predictions yet"}), 404
-        return jsonify(result.data[0]), 200
+        pred = result.data[0]
+        formatted = format_prediction_response(user_id, pred["days_until_period"], pred["next_period_date"])
+        pred["days_until_period"] = formatted["days_until_period"]
+        pred["next_period_date"] = formatted["next_period_date"]
+        return jsonify(pred), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
@@ -688,6 +846,13 @@ def get_dashboard_data(user_id):
         needs_details = False
         if profile.get("exercise_frequency") is None or profile.get("sleep_duration") is None:
             needs_details = True
+
+        # Format prediction response dynamically
+        if prediction:
+            prediction = dict(prediction)
+            formatted = format_prediction_response(user_id, prediction["days_until_period"], prediction["next_period_date"])
+            prediction["days_until_period"] = formatted["days_until_period"]
+            prediction["next_period_date"] = formatted["next_period_date"]
 
         return jsonify({
             "userName":    user.get("name"),
@@ -793,10 +958,10 @@ def get_user_profile(user_id):
                 "model_symptoms":    profile.get("model_symptoms") or {},
             },
             "prediction": {
-                "cycle_phase":       pred.get("cycle_phase"),
-                "days_until_period": pred.get("days_until_period"),
-                "pcos_risk_score":   pred.get("pcos_risk_score"),
-                "next_period_date":  pred.get("next_period_date"),
+                "cycle_phase":       pred.get("cycle_phase") if pred else None,
+                "days_until_period": format_prediction_response(user_id, pred.get("days_until_period", 28), pred.get("next_period_date", ""))["days_until_period"] if pred else None,
+                "pcos_risk_score":   pred.get("pcos_risk_score") if pred else 0,
+                "next_period_date":  format_prediction_response(user_id, pred.get("days_until_period", 28), pred.get("next_period_date", ""))["next_period_date"] if pred else None,
             },
             "logs": logs_res.data or []
         }), 200
@@ -816,10 +981,16 @@ def update_tracker():
         cycle_length = int(data.get("cycle_length", 28))
         period_length = int(data.get("period_length", 5))
 
+        # Record this update as a manual correction data point and update rolling average
+        computed_cycle_length = cycle_length
+        if last_period:
+            add_manual_correction(user_id, last_period)
+            computed_cycle_length = calculate_rolling_cycle_length(user_id)
+
         # Update health_profile
         supabase.table("health_profile").update({
             "last_period_date": last_period,
-            "cycle_length": cycle_length,
+            "cycle_length": computed_cycle_length,
             "bleeding_duration": period_length
         }).eq("user_id", user_id).execute()
 
@@ -852,7 +1023,15 @@ def update_tracker():
             }
             supabase.table("predictions").upsert(prediction).execute()
             
-            return jsonify({"success": True, "prediction": prediction}), 200
+            formatted = format_prediction_response(user_id, days_left, next_period)
+            prediction_resp = {
+                "user_id": user_id,
+                "cycle_phase": cycle_phase,
+                "days_until_period": formatted["days_until_period"],
+                "pcos_risk_score": pcos_risk,
+                "next_period_date": formatted["next_period_date"]
+            }
+            return jsonify({"success": True, "prediction": prediction_resp}), 200
         else:
             return jsonify({"success": True}), 200
     except Exception as e:
@@ -1034,6 +1213,9 @@ def delete_period_log():
             }
             supabase.table("predictions").upsert(prediction).execute()
 
+        # Recalculate rolling average after deletion
+        calculate_rolling_cycle_length(user_id)
+
         return jsonify({"success": True}), 200
     except Exception as e:
         print(f"ERROR in delete-period-log: {str(e)}")
@@ -1050,18 +1232,22 @@ def edit_period_log():
     if not user_id or not old_date or not new_date:
         return jsonify({"error": "user_id, old_date, and new_date are required"}), 400
     try:
-        # 1. Check and update in health_profile if it matches old_date
+        # 1. Record the edit as a manual correction data point and recalculate rolling average
+        add_manual_correction(user_id, new_date)
+        calculate_rolling_cycle_length(user_id)
+
+        # 2. Check and update in health_profile if it matches old_date
         profile_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
         if profile_res.data:
             profile = profile_res.data[0]
             if profile.get("last_period_date") == old_date:
                 supabase.table("health_profile").update({"last_period_date": new_date}).eq("user_id", user_id).execute()
         
-        # 2. Update daily_logs: old_date set period_started = False
+        # 3. Update daily_logs: old_date set period_started = False
         supabase.table("daily_logs").update({"period_started": False})\
             .eq("user_id", user_id).eq("log_date", old_date).execute()
 
-        # 3. Check if new_date daily log exists
+        # 4. Check if new_date daily log exists
         new_log_res = supabase.table("daily_logs").select("*")\
             .eq("user_id", user_id).eq("log_date", new_date).execute()
         
@@ -1080,7 +1266,7 @@ def edit_period_log():
                 "energy_level": 1
             }).execute()
 
-        # 4. Re-run predictions based on new state
+        # 5. Re-run predictions based on new state
         profile_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
         user_res = supabase.table("users").select("*").eq("id", user_id).execute()
         
@@ -1112,6 +1298,92 @@ def edit_period_log():
         return jsonify({"success": True}), 200
     except Exception as e:
         print(f"ERROR in edit-period-log: {str(e)}")
+        return jsonify({"error": str(e)}), 400
+
+
+# ── 14. LIGHTWEIGHT TRACKER LOGGING ENDPOINT ──
+@app.route('/api/tracker/log', methods=['POST'])
+def log_tracker():
+    data = request.json
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+        
+    symptoms = data.get("symptoms", {})
+    lifestyle = data.get("lifestyle", {})
+    timestamp = data.get("timestamp") or (datetime.utcnow().isoformat() + "Z")
+    
+    try:
+        prof_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+        if not prof_res.data:
+            supabase.table("health_profile").insert({
+                "user_id": user_id,
+                "last_period_date": date.today().isoformat(),
+                "cycle_length": 28,
+                "periods_regular": 1
+            }).execute()
+            prof_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+            
+        profile = prof_res.data[0]
+        model_symptoms = profile.get("model_symptoms") or {}
+        
+        tracker_logs = model_symptoms.get("tracker_logs") or []
+        new_log = {
+            "timestamp": timestamp,
+            "symptoms": symptoms,
+            "lifestyle": lifestyle
+        }
+        tracker_logs.append(new_log)
+        model_symptoms["tracker_logs"] = tracker_logs
+        
+        update_data = {"model_symptoms": model_symptoms}
+        if "sugar" in lifestyle:
+            update_data["sugar_intake"] = int(lifestyle["sugar"])
+        if "junk_food" in lifestyle:
+            update_data["junk_food_frequency"] = int(lifestyle["junk_food"])
+        if "caffeine" in lifestyle:
+            update_data["caffeine_intake"] = int(lifestyle["caffeine"])
+            
+        supabase.table("health_profile").update(update_data).eq("user_id", user_id).execute()
+        
+        user_res = supabase.table("users").select("*").eq("id", user_id).execute()
+        if user_res.data:
+            user = user_res.data[0]
+            profile_combined = {**profile, **user, **update_data}
+            daily_mock = {"stress_level": 3, "sleep_quality": 3, "mood": 3, "water_glasses": 6}
+            model_input = build_model_input(profile_combined, daily_mock)
+            
+            pcos_df = pd.DataFrame([{col: model_input.get(col, 0) for col in pcos_features}]).astype(float)
+            pcos_risk = round(float(pcos_model.predict_proba(pcos_df)[0][1]) * 100, 1)
+            
+            period_df = pd.DataFrame([{col: model_input.get(col, 0) for col in period_features}]).astype(float)
+            period_sc = scaler.transform(period_df)
+            days_left = max(0, round(float(svr_model.predict(period_sc)[0])))
+            next_period = (date.today() + timedelta(days=days_left)).isoformat()
+            cycle_phase = get_cycle_phase(model_input["Days_Since_Last_Period"], model_input["Avg_Cycle_Length_days"])
+            
+            prediction = {
+                "user_id": user_id,
+                "cycle_phase": cycle_phase,
+                "days_until_period": days_left,
+                "pcos_risk_score": pcos_risk,
+                "next_period_date": next_period
+            }
+            supabase.table("predictions").upsert(prediction).execute()
+            
+            formatted = format_prediction_response(user_id, days_left, next_period)
+            return jsonify({
+                "success": True,
+                "cycle_phase": cycle_phase,
+                "days_until_period": formatted["days_until_period"],
+                "next_period_date": formatted["next_period_date"],
+                "pcos_risk_score": pcos_risk
+            }), 200
+        else:
+            return jsonify({"success": True}), 200
+            
+    except Exception as e:
+        print(f"ERROR in tracker_log: {str(e)}")
         return jsonify({"error": str(e)}), 400
 
 

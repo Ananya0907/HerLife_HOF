@@ -90,7 +90,13 @@ export default function ProfilePage() {
 
   const formatDate = (d: string) => {
     if (!d) return '—';
-    return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    if (d.includes(' to ')) {
+      const parts = d.split(' to ');
+      return `${formatDate(parts[0])} to ${formatDate(parts[1])}`;
+    }
+    const parsed = new Date(d);
+    if (isNaN(parsed.getTime())) return d;
+    return parsed.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
   const handleSaveChanges = async () => {

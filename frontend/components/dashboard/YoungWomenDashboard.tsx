@@ -26,7 +26,11 @@ import { API_BASE_URL } from '@/utils/api';
 
 export default function YoungWomenDashboard({ userName }: { userName: string }) {
   const router = useRouter();
-  const [cycleData, setCycleData] = useState({
+  const [cycleData, setCycleData] = useState<{
+    nextPeriod: number | string;
+    cycleDay: number;
+    currentPhase: string;
+  }>({
     nextPeriod: 0,
     cycleDay: 1,
     currentPhase: 'Analyzing...'

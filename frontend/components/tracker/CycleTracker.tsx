@@ -39,7 +39,13 @@ export default function CycleTracker() {
 
   const formatDate = (isoString: string) => {
     try {
+      if (!isoString) return '';
+      if (isoString.includes(' to ')) {
+        const parts = isoString.split(' to ');
+        return `${formatDate(parts[0])} to ${formatDate(parts[1])}`;
+      }
       const d = new Date(isoString);
+      if (isNaN(d.getTime())) return isoString;
       return d.toLocaleDateString('en-US', {
         month: 'long',
         day: 'numeric',
@@ -331,7 +337,42 @@ export default function CycleTracker() {
                 type="date" 
                 className={styles.inputField} 
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(e) => {
+                  const newDate = e.target.value;
+                  setStartDate(newDate);
+                  if (newDate) {
+                    const userId = localStorage.getItem('user_id');
+                    if (userId) {
+                      fetch(`${API_BASE_URL}/api/update-tracker`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          user_id: userId,
+                          last_period_date: newDate,
+                          cycle_length: cycleLength,
+                          period_length: periodLength
+                        })
+                      })
+                      .then(res => res.json())
+                      .then(data => {
+                        if (data.success) {
+                          const savedDateFormatted = formatDate(newDate);
+                          const newHistoryItem: HistoryItem = {
+                            date: savedDateFormatted,
+                            isoDate: newDate,
+                            duration: periodLength,
+                            cycleLength: cycleLength
+                          };
+                          setHistoryList(prev => {
+                            const filtered = prev.filter(item => item.isoDate !== newDate);
+                            return [newHistoryItem, ...filtered];
+                          });
+                        }
+                      })
+                      .catch(err => console.error("Silent date correction failed:", err));
+                    }
+                  }
+                }}
               />
             </div>
 
