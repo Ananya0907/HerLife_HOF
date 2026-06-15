@@ -356,3 +356,36 @@
     min-width: calc(50% - 1rem);
   }
 }
+
+.badgeLow {
+  background-color: #E8F5E9;
+  color: #2E7D32;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+  margin-left: 0.5rem;
+}
+
+.badgeModerate {
+  background-color: #FFF7ED;
+  color: #C2410C;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+  margin-left: 0.5rem;
+}
+
+.badgeHigh {
+  background-color: var(--background);
+  color: var(--primary);
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+  margin-left: 0.5rem;
+}
