@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Minus, Plus, Check } from 'lucide-react';
 import styles from './DailyLogCard.module.css';
+import { API_BASE_URL } from '@/utils/api';
 
 interface DailyLogData {
   energy: 'Low' | 'Medium' | 'High';
@@ -38,7 +39,7 @@ export default function DailyLogCard({ onSave }: { onSave?: (data: any) => void 
 
     setLoading(true);
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/daily-log', {
+      const response = await fetch(`${API_BASE_URL}/api/daily-log`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

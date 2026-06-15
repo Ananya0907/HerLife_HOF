@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { 
   Heart,
   Book,
@@ -26,26 +27,61 @@ export default function LearnPage() {
   ];
 
   const videos = [
-    { title: "Understanding Your Menstrual Cycle", author: "HealthLine", duration: "12:45", color: "var(--accent)" },
-    { title: "Hormones and Your Monthly Cycle", author: "Ted-Ed", duration: "8:20", color: "#FF8A8A" },
-    { title: "Period Pain: What's Normal and What's Not", author: "Mayo Clinic", duration: "15:30", color: "var(--primary)" },
-    { title: "PCOS Explained - Symptoms and Management", author: "Cleveland Clinic", duration: "10:15", color: "var(--accent)" },
-    { title: "Nutrition for Hormonal Health", author: "NutritionFacts", duration: "18:00", color: "var(--primary)" },
-    { title: "Exercise Throughout Your Cycle", author: "Fitness Blender", duration: "14:25", color: "#FF8A8A" }
+    { 
+      title: "Menstrual Cycle Walkthrough: Phases & Hormonal Regulation", 
+      author: "Amoeba Sisters", 
+      duration: "16:32", 
+      url: "https://www.youtube.com/watch?v=h36poEtEbi4",
+      thumbnail: "https://img.youtube.com/vi/h36poEtEbi4/hqdefault.jpg"
+    },
+    { 
+      title: "The Menstrual Cycle Explained: A Guide to the 4 Phases & Hormones", 
+      author: "Sprouts", 
+      duration: "3:46", 
+      url: "https://www.youtube.com/watch?v=wtxQRuEmgyM",
+      thumbnail: "https://img.youtube.com/vi/wtxQRuEmgyM/hqdefault.jpg"
+    },
+    { 
+      title: "PCOS & Menstrual Cycle Explained - Symptoms, Infertility, Causes, & Treatment", 
+      author: "MedShadow Foundation", 
+      duration: "7:25", 
+      url: "https://www.youtube.com/watch?v=RMWy9_CQZxc",
+      thumbnail: "https://img.youtube.com/vi/RMWy9_CQZxc/hqdefault.jpg"
+    }
   ];
 
   const reading = [
-    { title: "The Four Phases of the Menstrual Cycle", desc: "Learn about each phase and what happens in your body", time: "5 min read" },
-    { title: "Managing PMS Symptoms Naturally", desc: "Evidence-based tips for reducing PMS discomfort", time: "7 min read" },
-    { title: "Understanding Irregular Periods", desc: "Common causes and when to seek medical advice", time: "6 min read" },
-    { title: "Period Myths Debunked", desc: "Separating fact from fiction about menstruation", time: "4 min read" }
+    { 
+      title: "How does the menstrual cycle work?", 
+      desc: "A biological overview of the hormonal changes that trigger ovulation and menstruation.", 
+      source: "NCBI Bookshelf", 
+      url: "https://www.ncbi.nlm.nih.gov/books/NBK279054/" 
+    },
+    { 
+      title: "How to Relieve PMS Symptoms Naturally", 
+      desc: "Natural lifestyle changes, dietary tips, and remedies to ease premenstrual syndrome discomfort.", 
+      source: "Healthfab", 
+      url: "https://www.healthfab.in/blogs/lifestyle/relieve-premenstrual-syndrome-naturally" 
+    },
+    { 
+      title: "Why Are My Periods Irregular?", 
+      desc: "Understanding common causes for irregular menstrual cycles in teens and young women.", 
+      source: "TeenBook", 
+      url: "https://teenbook.in/my-periods-are-not-regular/" 
+    },
+    { 
+      title: "11 Period Myths and Facts", 
+      desc: "Separating misconceptions from scientific facts about periods and cycle symptoms.", 
+      source: "Nationwide Children's Hospital", 
+      url: "https://www.nationwidechildrens.org/family-resources-education/700childrens/2025/02/11-period-myths-and-facts" 
+    }
   ];
 
   const resources = [
-    { title: "Cycle Tracking Journal", desc: "Printable monthly tracker", file: "/resources/Cycle_Tracking_Journal.doc" },
-    { title: "Hormone Guide", desc: "Visual hormone timeline", file: "/resources/Hormone_Guide.doc" },
-    { title: "Nutrition Planner", desc: "Meal ideas by cycle phase", file: "/resources/Nutrition_Planner.doc" },
-    { title: "Exercise Calendar", desc: "Phase-based workout plan", file: "/resources/Exercise_Calendar.doc" }
+    { title: "Cycle Tracking Journal", desc: "Printable monthly tracker", type: "cycle" },
+    { title: "Hormone Guide", desc: "Visual hormone timeline", type: "hormone" },
+    { title: "Nutrition Planner", desc: "Meal ideas by cycle phase", type: "nutrition" },
+    { title: "Exercise Calendar", desc: "Phase-based workout plan", type: "exercise" }
   ];
 
   return (
@@ -82,8 +118,22 @@ export default function LearnPage() {
         </div>
         <div className={styles.videosGrid}>
           {videos.map((vid, idx) => (
-            <div key={idx} className={styles.videoCard}>
-              <div className={styles.videoThumbnail} style={{ backgroundColor: vid.color }}>
+            <a 
+              key={idx} 
+              href={vid.url} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className={styles.videoCard}
+              style={{ textDecoration: 'none', color: 'inherit' }}
+            >
+              <div 
+                className={styles.videoThumbnail} 
+                style={{ 
+                  backgroundImage: `url(${vid.thumbnail})`, 
+                  backgroundSize: 'cover', 
+                  backgroundPosition: 'center' 
+                }}
+              >
                 <div className={styles.playIcon}>
                   <Play fill="currentColor" size={24} />
                 </div>
@@ -93,7 +143,7 @@ export default function LearnPage() {
                 <div className={styles.videoTitle}>{vid.title}</div>
                 <div className={styles.videoAuthor}>{vid.author}</div>
               </div>
-            </div>
+            </a>
           ))}
         </div>
 
@@ -103,14 +153,23 @@ export default function LearnPage() {
         </div>
         <div className={styles.readingList} style={{ marginBottom: '3rem' }}>
           {reading.map((item, idx) => (
-            <div key={idx} className={styles.readingCard}>
+            <a 
+              key={idx} 
+              href={item.url} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className={styles.readingCard}
+              style={{ textDecoration: 'none', color: 'inherit' }}
+            >
               <div className={styles.readingContent}>
                 <div className={styles.readingTitle}>{item.title}</div>
                 <div className={styles.readingDesc}>{item.desc}</div>
-                <div className={styles.readingTime}>{item.time}</div>
+                <div className={styles.readingSource}>Source: {item.source}</div>
               </div>
-              <ExternalLink className={styles.readingIcon} size={20} />
-            </div>
+              <div className={styles.readButton}>
+                Take me to this page <ExternalLink size={16} style={{ marginLeft: '4px' }} />
+              </div>
+            </a>
           ))}
         </div>
 
@@ -124,10 +183,9 @@ export default function LearnPage() {
           </div>
           <div className={styles.resourcesGrid}>
             {resources.map((res, idx) => (
-              <a 
+              <Link 
                 key={idx} 
-                href={res.file} 
-                download={res.file.split('/').pop()} 
+                href={`/learn/report?type=${res.type}`}
                 className={styles.resourceBox}
                 style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
               >
@@ -138,7 +196,7 @@ export default function LearnPage() {
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
                   <Download size={20} />
                 </div>
-              </a>
+              </Link>
             ))}
           </div>
         </div>

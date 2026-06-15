@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft } from 'lucide-react';
+import { API_BASE_URL } from '@/utils/api';
 import styles from './Onboarding.module.css';
 import { PHASE_FLOWS } from './questions';
 import { useRouter } from 'next/navigation';
@@ -35,15 +36,46 @@ export default function PhaseQuestionnaire({ phase }: { phase: string }) {
       }
 
       try {
-        // Collect symptom flags
         const symList = answers.ML_SYM || [];
         const pmsList = answers.ML_PMS || [];
         const pcosList = answers.ML_PCOS_S || [];
-        
         const combinedSymptomsList = [...symList, ...pmsList, ...pcosList];
-        const modelSymptomsObj: Record<string, number> = {};
+        
+        const modelSymptomsObj: Record<string, any> = {
+          Exercise_Frequency:          answers.Exercise_Frequency,
+          Sleep_Duration:              answers.Sleep_Duration,
+          Stress_Level_1to5:           answers.Stress_Level_1to5,
+          Junk_Food_Frequency_1to5:    answers.Junk_Food_Frequency_1to5,
+          Sugar_Intake_Frequency_1to5: answers.Sugar_Intake_Frequency_1to5,
+          Caffeine_Intake:             answers.Caffeine_Intake,
+          Water_Intake_Litres:         answers.Water_Intake_Litres,
+          Overall_Energy_Level:        answers.Overall_Energy_Level,
+          sleep_quality:               answers.sleep,
+          energy:                      answers.energy,
+          activity:                    answers.activity,
+          water_intake:                answers.water_intake,
+          emotional_wellbeing:         answers.emotional_wellbeing,
+        };
+
+        if (answers.pregnancy_week) {
+          const currentWeekInt = parseInt(answers.pregnancy_week);
+          if (!isNaN(currentWeekInt)) {
+            modelSymptomsObj.pregnancy_week_start = currentWeekInt;
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - (currentWeekInt * 7));
+            modelSymptomsObj.pregnancy_start_date = startDate.toISOString().split('T')[0];
+          }
+        }
+
+        // Add binary flags for ML model items
         combinedSymptomsList.forEach((sym: string) => {
           modelSymptomsObj[sym] = 1;
+        });
+
+        // Add pregnant symptoms flags
+        const pregnantSymptoms = answers.symptoms || [];
+        pregnantSymptoms.forEach((sym: string) => {
+          modelSymptomsObj[`sym_${sym}`] = 1;
         });
 
         // Map frontend answers to backend expectations
@@ -67,7 +99,7 @@ export default function PhaseQuestionnaire({ phase }: { phase: string }) {
           model_symptoms:           modelSymptomsObj,
         };
 
-        const response = await fetch('http://127.0.0.1:5000/api/onboarding', {
+        const response = await fetch(`${API_BASE_URL}/api/onboarding`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(mappedData)

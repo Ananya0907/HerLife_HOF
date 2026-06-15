@@ -5,12 +5,16 @@ import { X, Sparkles } from 'lucide-react';
 import styles from './ProfileCompletionModal.module.css';
 
 interface ProfileCompletionModalProps {
+  initialHeight?: number;
+  initialWeight?: number;
   onClose: () => void;
   onComplete: (data: any) => void;
 }
 
-export default function ProfileCompletionModal({ onClose, onComplete }: ProfileCompletionModalProps) {
+export default function ProfileCompletionModal({ initialHeight, initialWeight, onClose, onComplete }: ProfileCompletionModalProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [height, setHeight] = useState(initialHeight ? String(initialHeight) : '');
+  const [weight, setWeight] = useState(initialWeight ? String(initialWeight) : '');
 
   const questions = [
     {
@@ -49,11 +53,15 @@ export default function ProfileCompletionModal({ onClose, onComplete }: ProfileC
     setAnswers(prev => ({ ...prev, [qId]: option }));
   };
 
-  const isComplete = questions.every(q => answers[q.id]);
+  const isComplete = questions.every(q => answers[q.id]) && height && weight;
 
   const handleSubmit = () => {
     if (isComplete) {
-      onComplete(answers);
+      onComplete({
+        ...answers,
+        height_cm: height,
+        weight_kg: weight
+      });
     }
   };
 
@@ -67,6 +75,30 @@ export default function ProfileCompletionModal({ onClose, onComplete }: ProfileC
         <div className={styles.modalHeader}>
           <h2><Sparkles size={24} color="var(--primary)" /> Complete Your Profile</h2>
           <p>Help us personalize your health insights with a few more details.</p>
+        </div>
+
+        {/* Height and Weight Inputs */}
+        <div className={styles.heightWeightSection}>
+          <div className={styles.inputItem}>
+            <label className={styles.inputLabel}>Height (cm)</label>
+            <input 
+              type="number" 
+              className={styles.numInput} 
+              placeholder="e.g. 165" 
+              value={height}
+              onChange={e => setHeight(e.target.value)}
+            />
+          </div>
+          <div className={styles.inputItem}>
+            <label className={styles.inputLabel}>Weight (kg)</label>
+            <input 
+              type="number" 
+              className={styles.numInput} 
+              placeholder="e.g. 60" 
+              value={weight}
+              onChange={e => setWeight(e.target.value)}
+            />
+          </div>
         </div>
 
         <div className={styles.questionSection}>

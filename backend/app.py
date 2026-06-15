@@ -27,7 +27,7 @@ scaler          = joblib.load("models/herlife_period_scaler.pkl")
 pcos_features   = joblib.load("models/herlife_pcos_features.pkl")
 period_features = joblib.load("models/herlife_period_features.pkl")
 
-print("✅ Models loaded successfully")
+print("OK: Models loaded successfully")
 
 # ── Helpers ──
 ordinal_maps = {
@@ -143,7 +143,12 @@ def build_model_input(profile, daily):
     # Merge dynamic ML symptoms explicitly recorded by the user (or default empty)
     symptoms = profile.get("model_symptoms") or {}
     for sym_key, sym_val in symptoms.items():
-        base_input[sym_key] = float(sym_val)
+        if sym_key in ["pcos_active", "pcos_history"]:
+            continue
+        try:
+            base_input[sym_key] = float(sym_val)
+        except (ValueError, TypeError):
+            pass
 
     return base_input
 
@@ -285,6 +290,15 @@ def onboarding():
             "bmi":       bmi
         }).eq("id", user_id).execute()
 
+        model_symptoms = data.get("model_symptoms", {})
+        model_symptoms.update({
+            "Clotting":                   1 if data.get("clotting") == "Yes" else 0,
+            "Difficulty_Losing_Weight":   1 if data.get("difficulty_losing_weight") == "Yes" else 0,
+            "Hormonal_Contraceptive_Use": 1 if data.get("hormonal_contraceptive") == "Yes" else 0,
+            "Skin_Condition_During_Cycle":ordinal_maps["skin"].get(data.get("skin_condition", "Clear"), 0),
+            "Hair_Fall_Level":            ordinal_maps["hair"].get(data.get("hair_fall", "None"), 0),
+        })
+
         # Insert or Update health profile (using upsert to be safe)
         profile_data = {
             "user_id":                  user_id,
@@ -294,14 +308,9 @@ def onboarding():
             "pcos_diagnosed":           1 if data.get("pcos_diagnosed") == "Yes" else (0 if data.get("pcos_diagnosed") == "No" else -1),
             "periods_regular":          1 if data.get("periods_regular") == "Yes" else 0,
             "bleeding_duration":        int(data.get("bleeding_duration") or 4),
-            "clotting":                 1 if data.get("clotting") == "Yes" else 0,
             "pain_level":               int(data.get("pain_level") or 2),
             "missed_periods_frequency": ordinal_maps["missed"].get(data.get("missed_periods_frequency", "Never"), 0),
-            "difficulty_losing_weight": 1 if data.get("difficulty_losing_weight") == "Yes" else 0,
-            "hormonal_contraceptive":   1 if data.get("hormonal_contraceptive") == "Yes" else 0,
-            "skin_condition":           ordinal_maps["skin"].get(data.get("skin_condition", "Clear"), 0),
-            "hair_fall":                ordinal_maps["hair"].get(data.get("hair_fall", "None"), 0),
-            "model_symptoms":           data.get("model_symptoms", {}),
+            "model_symptoms":           model_symptoms,
         }
         
         supabase.table("health_profile").upsert(profile_data).execute()
@@ -318,18 +327,87 @@ def update_profile():
     data    = request.json
     user_id = data["user_id"]
     try:
-        supabase.table("health_profile").update({
-            "exercise_frequency":       ordinal_maps["exercise"].get(data.get("exercise_frequency", "Sometimes"), 1),
-            "sleep_duration":           ordinal_maps["sleep"].get(data.get("sleep_duration", "7-9 hrs"), 2),
-            "diet_type":                data.get("diet_type", "Mixed"),
-            "caffeine_intake":          ordinal_maps["caffeine"].get(data.get("caffeine_intake", "Sometimes"), 2),
-            "junk_food_frequency":      data.get("junk_food_frequency", 3),
-            "sugar_intake":             data.get("sugar_intake", 3),
-            "water_intake":             data.get("water_intake", 2.0),
-            "missed_periods_frequency": ordinal_maps["missed"].get(data.get("missed_periods_frequency", "Never"), 0),
-        }).eq("user_id", user_id).execute()
+        # 1. Update height, weight, and BMI if present
+        if "height_cm" in data or "weight_kg" in data:
+            user_res = supabase.table("users").select("height_cm", "weight_kg").eq("id", user_id).execute()
+            h = data.get("height_cm")
+            w = data.get("weight_kg")
+            if user_res.data:
+                if h is None:
+                    h = user_res.data[0].get("height_cm") or 160
+                if w is None:
+                    w = user_res.data[0].get("weight_kg") or 60
+            h = float(h)
+            w = float(w)
+            bmi = round(w / (h / 100) ** 2, 1)
+            supabase.table("users").update({
+                "height_cm": h,
+                "weight_kg": w,
+                "bmi":       bmi
+            }).eq("id", user_id).execute()
+
+        # 2. Get existing health profile to update model_symptoms
+        prof_res = supabase.table("health_profile").select("model_symptoms").eq("user_id", user_id).execute()
+        model_symptoms = {}
+        has_profile = False
+        if prof_res.data:
+            model_symptoms = prof_res.data[0].get("model_symptoms") or {}
+            has_profile = True
+
+        if "pregnancy_week_start" in data:
+            model_symptoms["pregnancy_week_start"] = data["pregnancy_week_start"]
+        if "pregnancy_start_date" in data:
+            model_symptoms["pregnancy_start_date"] = data["pregnancy_start_date"]
+        if "pregnancy_logs" in data:
+            model_symptoms["pregnancy_logs"] = data["pregnancy_logs"]
+
+        if "trimester" in data:
+            model_symptoms["trimester"] = data["trimester"]
+        if "exercise_frequency" in data:
+            model_symptoms["Exercise_Frequency"] = data["exercise_frequency"]
+        if "sleep_duration" in data:
+            model_symptoms["Sleep_Duration"] = data["sleep_duration"]
+        if "junk_food_frequency" in data:
+            model_symptoms["Junk_Food_Frequency_1to5"] = data["junk_food_frequency"]
+        if "sugar_intake" in data:
+            model_symptoms["Sugar_Intake_Frequency_1to5"] = data["sugar_intake"]
+        if "caffeine_intake" in data:
+            model_symptoms["Caffeine_Intake"] = data["caffeine_intake"]
+        if "water_intake" in data:
+            model_symptoms["Water_Intake_Litres"] = data["water_intake"]
+
+        db_updates = {}
+        if "exercise_frequency" in data:
+            db_updates["exercise_frequency"] = ordinal_maps["exercise"].get(data["exercise_frequency"], 1)
+        if "sleep_duration" in data:
+            db_updates["sleep_duration"] = ordinal_maps["sleep"].get(data["sleep_duration"], 2)
+        if "diet_type" in data:
+            db_updates["diet_type"] = data["diet_type"]
+        if "caffeine_intake" in data:
+            db_updates["caffeine_intake"] = ordinal_maps["caffeine"].get(data["caffeine_intake"], 2)
+        if "junk_food_frequency" in data:
+            db_updates["junk_food_frequency"] = data["junk_food_frequency"]
+        if "sugar_intake" in data:
+            db_updates["sugar_intake"] = data["sugar_intake"]
+        if "water_intake" in data:
+            db_updates["water_intake"] = data["water_intake"]
+        if "missed_periods_frequency" in data:
+            db_updates["missed_periods_frequency"] = ordinal_maps["missed"].get(data["missed_periods_frequency"], 0)
+        
+        # Always update model_symptoms
+        db_updates["model_symptoms"] = model_symptoms
+
+        if has_profile:
+            supabase.table("health_profile").update(db_updates).eq("user_id", user_id).execute()
+        else:
+            db_updates["user_id"] = user_id
+            db_updates["cycle_length"] = 28
+            db_updates["periods_regular"] = 1
+            supabase.table("health_profile").insert(db_updates).execute()
+            
         return jsonify({"success": True}), 200
     except Exception as e:
+        print(f"ERROR in profile update: {str(e)}")
         return jsonify({"error": str(e)}), 400
 
 
@@ -349,6 +427,91 @@ def daily_log():
             "period_started": data.get("period_started", False),
             "energy_level":   ordinal_maps["energy"].get(data.get("energy_level", "Medium"), 1),
         }).execute()
+
+        # Update weight in users table if passed
+        weight_kg = data.get("weight_kg")
+        user_res = supabase.table("users").select("height_cm", "life_phase").eq("id", user_id).execute()
+        is_pregnant = False
+        if user_res.data:
+            is_pregnant = (user_res.data[0].get("life_phase") == "pregnant")
+
+        if weight_kg:
+            h = 160.0
+            if user_res.data:
+                h = user_res.data[0].get("height_cm") or 160.0
+            h = float(h)
+            w = float(weight_kg)
+            bmi = round(w / (h / 100) ** 2, 1)
+            supabase.table("users").update({
+                "weight_kg": w,
+                "bmi":       bmi
+            }).eq("id", user_id).execute()
+
+        # Save pregnancy log inside model_symptoms in health_profile
+        if is_pregnant:
+            prof_res = supabase.table("health_profile").select("model_symptoms").eq("user_id", user_id).execute()
+            
+            has_profile = False
+            model_symptoms = {}
+            pregnancy_logs = []
+            
+            if prof_res.data:
+                profile = prof_res.data[0]
+                model_symptoms = profile.get("model_symptoms") or {}
+                pregnancy_logs = model_symptoms.get("pregnancy_logs", [])
+                has_profile = True
+                
+            today_str = date.today().isoformat()
+            
+            # Find and update existing log for today, or append new one
+            existing_log = next((log for log in pregnancy_logs if log.get("date") == today_str), None)
+            
+            log_entry = {
+                "date":                 today_str,
+                "pregnancy_week_start": data.get("pregnancy_week_start"),
+                "weight_kg":            data.get("weight_kg"),
+                "bp":                   data.get("bp"),
+                "symptoms":             data.get("symptoms"),
+                "felt_movement":        data.get("felt_movement"),
+                "kick_count":           data.get("kick_count"),
+                "movement_type":        data.get("movement_type"),
+                "sleep_hours":          data.get("sleep_hours"),
+                "sleep_rating":         data.get("sleep_rating"),
+                "water_glasses":        data.get("water_glasses"),
+                "meals_count":          data.get("meals_count"),
+                "took_vitamins":        data.get("took_vitamins"),
+                "avoided_cravings":     data.get("avoided_cravings"),
+                "mood":                 data.get("mood_label"),
+                "stress_score":         data.get("stress_score"),
+                "emotional_notes":      data.get("emotional_notes"),
+                "exercise":             data.get("exercise"),
+                "activity_type":        data.get("activity_type"),
+                "activity_duration":    data.get("activity_duration"),
+                "bleeding":             data.get("bleeding"),
+                "fluid_leakage":        data.get("fluid_leakage"),
+                "contractions":         data.get("contractions"),
+                "unusual_symptoms":     data.get("unusual_symptoms"),
+                "notes":                data.get("notes")
+            }
+            
+            if existing_log:
+                existing_log.update(log_entry)
+            else:
+                pregnancy_logs.insert(0, log_entry) # newest first
+                
+            model_symptoms["pregnancy_logs"] = pregnancy_logs
+            
+            if has_profile:
+                supabase.table("health_profile").update({
+                    "model_symptoms": model_symptoms
+                }).eq("user_id", user_id).execute()
+            else:
+                supabase.table("health_profile").insert({
+                    "user_id": user_id,
+                    "cycle_length": 28,
+                    "periods_regular": 1,
+                    "model_symptoms": model_symptoms
+                }).execute()
 
         # If period started today → update last_period_date
         if data.get("period_started"):
@@ -533,6 +696,8 @@ def get_dashboard_data(user_id):
             "needs_details": needs_details,
             "wellness": {
                 "bmi": user.get("bmi", 22.0),
+                "height_cm": user.get("height_cm"),
+                "weight_kg": user.get("weight_kg"),
                 "riskScore": prediction.get("pcos_risk_score", 0)
             }
         }), 200
@@ -619,11 +784,13 @@ def get_user_profile(user_id):
                 "weight_kg":  user.get("weight_kg"),
             },
             "health": {
-                "cycle_length":     profile.get("cycle_length"),
-                "last_period_date": profile.get("last_period_date"),
-                "flow_intensity":   profile.get("flow_intensity"),
-                "periods_regular":  profile.get("periods_regular"),
-                "pcos_diagnosed":   profile.get("pcos_diagnosed"),
+                "cycle_length":      profile.get("cycle_length"),
+                "last_period_date":  profile.get("last_period_date"),
+                "flow_intensity":    profile.get("flow_intensity"),
+                "periods_regular":   profile.get("periods_regular"),
+                "pcos_diagnosed":    profile.get("pcos_diagnosed"),
+                "bleeding_duration": profile.get("bleeding_duration"),
+                "model_symptoms":    profile.get("model_symptoms") or {},
             },
             "prediction": {
                 "cycle_phase":       pred.get("cycle_phase"),
@@ -634,6 +801,317 @@ def get_user_profile(user_id):
             "logs": logs_res.data or []
         }), 200
     except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+# ── 11. UPDATE TRACKER SETTINGS + RUN ML ──
+@app.route('/api/update-tracker', methods=['POST'])
+def update_tracker():
+    data = request.json
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+    try:
+        last_period = data.get("last_period_date")
+        cycle_length = int(data.get("cycle_length", 28))
+        period_length = int(data.get("period_length", 5))
+
+        # Update health_profile
+        supabase.table("health_profile").update({
+            "last_period_date": last_period,
+            "cycle_length": cycle_length,
+            "bleeding_duration": period_length
+        }).eq("user_id", user_id).execute()
+
+        # Re-run ML predictions
+        profile_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+        user_res = supabase.table("users").select("*").eq("id", user_id).execute()
+        
+        if profile_res.data and user_res.data:
+            profile = {**profile_res.data[0], **user_res.data[0]}
+            daily_mock = {"stress_level": 3, "sleep_quality": 3, "mood": 3, "water_glasses": 6}
+            model_input = build_model_input(profile, daily_mock)
+            
+            # PCOS Prediction (XGBoost)
+            pcos_df   = pd.DataFrame([{col: model_input.get(col, 0) for col in pcos_features}]).astype(float)
+            pcos_risk = round(float(pcos_model.predict_proba(pcos_df)[0][1]) * 100, 1)
+            
+            # Period Prediction (SVR)
+            period_df = pd.DataFrame([{col: model_input.get(col, 0) for col in period_features}]).astype(float)
+            period_sc = scaler.transform(period_df)
+            days_left = max(0, round(float(svr_model.predict(period_sc)[0])))
+            next_period = (date.today() + timedelta(days=days_left)).isoformat()
+            cycle_phase = get_cycle_phase(model_input["Days_Since_Last_Period"], model_input["Avg_Cycle_Length_days"])
+            
+            prediction = {
+                "user_id": user_id,
+                "cycle_phase": cycle_phase,
+                "days_until_period": days_left,
+                "pcos_risk_score": pcos_risk,
+                "next_period_date": next_period
+            }
+            supabase.table("predictions").upsert(prediction).execute()
+            
+            return jsonify({"success": True, "prediction": prediction}), 200
+        else:
+            return jsonify({"success": True}), 200
+    except Exception as e:
+        print(f"ERROR in update-tracker: {str(e)}")
+        return jsonify({"error": str(e)}), 400
+
+
+# ── 11.1 PCOS SYMPTOMS GET & POST ──
+@app.route('/api/pcos-symptoms/<user_id>', methods=['GET'])
+def get_pcos_symptoms(user_id):
+    try:
+        # Fetch profile
+        prof_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+        if not prof_res.data:
+            # Auto-heal profile
+            supabase.table("health_profile").insert({
+                "user_id": user_id,
+                "last_period_date": date.today().isoformat(),
+                "cycle_length": 28,
+                "periods_regular": 1,
+                "model_symptoms": {}
+            }).execute()
+            prof_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+
+        profile = prof_res.data[0]
+        model_symptoms = profile.get("model_symptoms") or {}
+        
+        # Get active symptoms and history log
+        pcos_active = model_symptoms.get("pcos_active", {
+            "Irregular periods": True,
+            "Excessive hair growth": False,
+            "Weight gain": True,
+            "Acne": False,
+            "Hair thinning": False
+        })
+        pcos_history = model_symptoms.get("pcos_history", [])
+
+        return jsonify({
+            "pcos_active": pcos_active,
+            "pcos_history": pcos_history
+        }), 200
+    except Exception as e:
+        print(f"ERROR in get_pcos_symptoms: {str(e)}")
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route('/api/pcos-symptoms', methods=['POST'])
+def save_pcos_symptoms():
+    data = request.json
+    user_id = data.get("user_id")
+    symptoms = data.get("symptoms") # a dict like {"Irregular periods": true, ...}
+    if not user_id or symptoms is None:
+        return jsonify({"error": "user_id and symptoms are required"}), 400
+
+    try:
+        # Fetch existing profile
+        prof_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+        if not prof_res.data:
+            return jsonify({"error": "Profile not found"}), 404
+
+        profile = prof_res.data[0]
+        model_symptoms = profile.get("model_symptoms") or {}
+
+        # Add to history
+        pcos_history = model_symptoms.get("pcos_history", [])
+        
+        # Get current time string in ISO format
+        from datetime import datetime
+        now_str = datetime.utcnow().isoformat() + "Z"
+        
+        # Build new entry
+        new_entry = {
+            "date": now_str,
+            "symptoms": symptoms
+        }
+        pcos_history.insert(0, new_entry) # Put newest on top
+
+        # Save to model_symptoms
+        model_symptoms["pcos_active"] = symptoms
+        model_symptoms["pcos_history"] = pcos_history
+
+        # Update model features mapped from symptoms
+        model_symptoms.update({
+            "Difficulty_Losing_Weight": 1.0 if symptoms.get("Weight gain") else 0.0,
+            "Skin_Condition_During_Cycle": 2.0 if symptoms.get("Acne") else 0.0,
+            "Hair_Fall_Level": 2.0 if symptoms.get("Hair thinning") else 0.0,
+        })
+
+        # Update in DB
+        supabase.table("health_profile").update({
+            "model_symptoms": model_symptoms
+        }).eq("user_id", user_id).execute()
+
+        # Re-run predictions to calculate new PCOS risk
+        user_res = supabase.table("users").select("*").eq("id", user_id).execute()
+        if user_res.data:
+            user = user_res.data[0]
+            profile_combined = {**profile, **user, "model_symptoms": model_symptoms}
+            daily_mock = {"stress_level": 3, "sleep_quality": 3, "mood": 3, "water_glasses": 6}
+            model_input = build_model_input(profile_combined, daily_mock)
+            
+            # PCOS Prediction (XGBoost)
+            pcos_df = pd.DataFrame([{col: model_input.get(col, 0) for col in pcos_features}]).astype(float)
+            pcos_risk = round(float(pcos_model.predict_proba(pcos_df)[0][1]) * 100, 1)
+            
+            # Period Prediction (SVR)
+            period_df = pd.DataFrame([{col: model_input.get(col, 0) for col in period_features}]).astype(float)
+            period_sc = scaler.transform(period_df)
+            days_left = max(0, round(float(svr_model.predict(period_sc)[0])))
+            next_period = (date.today() + timedelta(days=days_left)).isoformat()
+            cycle_phase = get_cycle_phase(model_input["Days_Since_Last_Period"], model_input["Avg_Cycle_Length_days"])
+            
+            prediction = {
+                "user_id": user_id,
+                "cycle_phase": cycle_phase,
+                "days_until_period": days_left,
+                "pcos_risk_score": pcos_risk,
+                "next_period_date": next_period
+            }
+            supabase.table("predictions").upsert(prediction).execute()
+
+        return jsonify({
+            "success": True,
+            "pcos_active": symptoms,
+            "pcos_history": pcos_history
+        }), 200
+
+    except Exception as e:
+        print(f"ERROR in save_pcos_symptoms: {str(e)}")
+        return jsonify({"error": str(e)}), 400
+
+
+# ── 12. DELETE PERIOD LOG ──
+@app.route('/api/delete-period-log', methods=['POST'])
+def delete_period_log():
+    data = request.json
+    user_id = data.get("user_id")
+    log_date = data.get("log_date")
+    if not user_id or not log_date:
+        return jsonify({"error": "user_id and log_date are required"}), 400
+    try:
+        # Check and clear in health_profile if it matches
+        profile_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+        if profile_res.data:
+            profile = profile_res.data[0]
+            if profile.get("last_period_date") == log_date:
+                supabase.table("health_profile").update({"last_period_date": None}).eq("user_id", user_id).execute()
+        
+        # Update daily_logs on that date to set period_started = False
+        supabase.table("daily_logs").update({"period_started": False})\
+            .eq("user_id", user_id).eq("log_date", log_date).execute()
+
+        # Re-run predictions based on new state
+        profile_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+        user_res = supabase.table("users").select("*").eq("id", user_id).execute()
+        
+        if profile_res.data and user_res.data:
+            profile = {**profile_res.data[0], **user_res.data[0]}
+            daily_mock = {"stress_level": 3, "sleep_quality": 3, "mood": 3, "water_glasses": 6}
+            model_input = build_model_input(profile, daily_mock)
+            
+            # PCOS Prediction (XGBoost)
+            pcos_df   = pd.DataFrame([{col: model_input.get(col, 0) for col in pcos_features}]).astype(float)
+            pcos_risk = round(float(pcos_model.predict_proba(pcos_df)[0][1]) * 100, 1)
+            
+            # Period Prediction (SVR)
+            period_df = pd.DataFrame([{col: model_input.get(col, 0) for col in period_features}]).astype(float)
+            period_sc = scaler.transform(period_df)
+            days_left = max(0, round(float(svr_model.predict(period_sc)[0])))
+            next_period = (date.today() + timedelta(days=days_left)).isoformat()
+            cycle_phase = get_cycle_phase(model_input["Days_Since_Last_Period"], model_input["Avg_Cycle_Length_days"])
+            
+            prediction = {
+                "user_id": user_id,
+                "cycle_phase": cycle_phase,
+                "days_until_period": days_left,
+                "pcos_risk_score": pcos_risk,
+                "next_period_date": next_period
+            }
+            supabase.table("predictions").upsert(prediction).execute()
+
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        print(f"ERROR in delete-period-log: {str(e)}")
+        return jsonify({"error": str(e)}), 400
+
+
+# ── 13. EDIT PERIOD LOG ──
+@app.route('/api/edit-period-log', methods=['POST'])
+def edit_period_log():
+    data = request.json
+    user_id = data.get("user_id")
+    old_date = data.get("old_date")
+    new_date = data.get("new_date")
+    if not user_id or not old_date or not new_date:
+        return jsonify({"error": "user_id, old_date, and new_date are required"}), 400
+    try:
+        # 1. Check and update in health_profile if it matches old_date
+        profile_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+        if profile_res.data:
+            profile = profile_res.data[0]
+            if profile.get("last_period_date") == old_date:
+                supabase.table("health_profile").update({"last_period_date": new_date}).eq("user_id", user_id).execute()
+        
+        # 2. Update daily_logs: old_date set period_started = False
+        supabase.table("daily_logs").update({"period_started": False})\
+            .eq("user_id", user_id).eq("log_date", old_date).execute()
+
+        # 3. Check if new_date daily log exists
+        new_log_res = supabase.table("daily_logs").select("*")\
+            .eq("user_id", user_id).eq("log_date", new_date).execute()
+        
+        if new_log_res.data:
+            supabase.table("daily_logs").update({"period_started": True})\
+                .eq("user_id", user_id).eq("log_date", new_date).execute()
+        else:
+            supabase.table("daily_logs").insert({
+                "user_id": user_id,
+                "log_date": new_date,
+                "period_started": True,
+                "mood": 3,
+                "stress_level": 3,
+                "sleep_quality": 3,
+                "water_glasses": 6,
+                "energy_level": 1
+            }).execute()
+
+        # 4. Re-run predictions based on new state
+        profile_res = supabase.table("health_profile").select("*").eq("user_id", user_id).execute()
+        user_res = supabase.table("users").select("*").eq("id", user_id).execute()
+        
+        if profile_res.data and user_res.data:
+            profile = {**profile_res.data[0], **user_res.data[0]}
+            daily_mock = {"stress_level": 3, "sleep_quality": 3, "mood": 3, "water_glasses": 6}
+            model_input = build_model_input(profile, daily_mock)
+            
+            # PCOS Prediction (XGBoost)
+            pcos_df   = pd.DataFrame([{col: model_input.get(col, 0) for col in pcos_features}]).astype(float)
+            pcos_risk = round(float(pcos_model.predict_proba(pcos_df)[0][1]) * 100, 1)
+            
+            # Period Prediction (SVR)
+            period_df = pd.DataFrame([{col: model_input.get(col, 0) for col in period_features}]).astype(float)
+            period_sc = scaler.transform(period_df)
+            days_left = max(0, round(float(svr_model.predict(period_sc)[0])))
+            next_period = (date.today() + timedelta(days=days_left)).isoformat()
+            cycle_phase = get_cycle_phase(model_input["Days_Since_Last_Period"], model_input["Avg_Cycle_Length_days"])
+            
+            prediction = {
+                "user_id": user_id,
+                "cycle_phase": cycle_phase,
+                "days_until_period": days_left,
+                "pcos_risk_score": pcos_risk,
+                "next_period_date": next_period
+            }
+            supabase.table("predictions").upsert(prediction).execute()
+
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        print(f"ERROR in edit-period-log: {str(e)}")
         return jsonify({"error": str(e)}), 400
 
 

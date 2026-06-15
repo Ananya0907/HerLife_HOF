@@ -149,6 +149,83 @@ export const PHASE_FLOWS: Record<string, Question[]> = {
         {label: 'Severe', value: 'Severe'}
       ] 
     },
+    { 
+      id: 'Exercise_Frequency', 
+      text: 'How often do you usually exercise?', 
+      type: 'select', 
+      options: [
+        {label: 'Never', value: '0'}, 
+        {label: 'Sometimes', value: '1'}, 
+        {label: 'Regularly', value: '2'}
+      ] 
+    },
+    { 
+      id: 'Sleep_Duration', 
+      text: 'How many hours of sleep do you get on average?', 
+      type: 'select', 
+      options: [
+        {label: 'Less than 5 hours', value: '0'}, 
+        {label: '5-7 hours', value: '1'}, 
+        {label: '7-9 hours', value: '2'}, 
+        {label: 'More than 9 hours', value: '3'}
+      ] 
+    },
+    { 
+      id: 'Stress_Level_1to5', 
+      text: 'How would you rate your typical daily stress levels?', 
+      type: 'slider', 
+      min: 1, 
+      max: 5, 
+      defaultValue: 3 
+    },
+    { 
+      id: 'Junk_Food_Frequency_1to5', 
+      text: 'How often do you eat fast food or highly processed snacks?', 
+      type: 'slider', 
+      min: 1, 
+      max: 5, 
+      defaultValue: 3 
+    },
+    { 
+      id: 'Sugar_Intake_Frequency_1to5', 
+      text: 'How frequently do you crave or consume sugary foods?', 
+      type: 'slider', 
+      min: 1, 
+      max: 5, 
+      defaultValue: 3 
+    },
+    { 
+      id: 'Caffeine_Intake', 
+      text: 'How often do you consume caffeine (coffee, energy drinks, etc.)?', 
+      type: 'select', 
+      options: [
+        {label: 'Never', value: '0'}, 
+        {label: 'Rarely', value: '1'}, 
+        {label: 'Sometimes', value: '2'}, 
+        {label: 'Daily', value: '3'}
+      ] 
+    },
+    { 
+      id: 'Water_Intake_Litres', 
+      text: 'Roughly how many liters of water do you drink a day?', 
+      type: 'select', 
+      options: [
+        {label: 'Less than 1 Liter', value: '0.5'}, 
+        {label: '1 to 2 Liters', value: '1.5'}, 
+        {label: '2 to 3 Liters', value: '2.5'}, 
+        {label: 'More than 3 Liters', value: '3.5'}
+      ] 
+    },
+    { 
+      id: 'Overall_Energy_Level', 
+      text: 'How would you describe your overall daily energy?', 
+      type: 'select', 
+      options: [
+        {label: 'Low Energy', value: '0'}, 
+        {label: 'Medium Energy', value: '1'}, 
+        {label: 'High Energy', value: '2'}
+      ] 
+    },
     {
       id: 'ML_SYM',
       text: 'Do you experience any of these general symptoms? (Select all that apply)',
@@ -197,7 +274,9 @@ export const PHASE_FLOWS: Record<string, Question[]> = {
     }
   ],
   pregnant: [
-    { id: 'trimester', text: 'Trimester', type: 'select', options: [{label: '1st', value: '1st'}, {label: '2nd', value: '2nd'}, {label: '3rd', value: '3rd'}] },
+    { id: 'pregnancy_week', text: 'Which week of pregnancy are you in?', type: 'input', unit: 'weeks', placeholder: 'e.g. 18' },
+    { id: 'height_cm', text: 'What is your height? (cm)', type: 'input', unit: 'cm', placeholder: 'e.g. 165' },
+    { id: 'Weight_kg', text: 'What is your weight? (kg)', type: 'input', unit: 'kg', placeholder: 'e.g. 60' },
     { id: 'sleep', text: 'Sleep quality', type: 'select', options: [{label: 'Poor', value: 'poor'}, {label: 'Okay', value: 'okay'}, {label: 'Good', value: 'good'}] },
     { id: 'energy', text: 'Energy', type: 'select', options: [{label: 'Low', value: 'low'}, {label: 'Medium', value: 'medium'}, {label: 'High', value: 'high'}] },
     { id: 'symptoms', text: 'Symptoms', type: 'multi', options: [{label: 'Nausea', value: 'nausea'}, {label: 'Fatigue', value: 'fatigue'}, {label: 'Back pain', value: 'back_pain'}, {label: 'Heartburn', value: 'heartburn'}] },

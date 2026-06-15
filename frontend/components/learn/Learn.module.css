@@ -248,14 +248,30 @@
   color: var(--foreground-muted);
 }
 
-.readingTime {
-  font-size: 0.9rem;
-  color: var(--primary);
-  font-weight: 500;
+.readingSource {
+  font-size: 0.85rem;
+  color: var(--foreground-muted);
+  font-style: italic;
+  margin-top: 0.25rem;
 }
 
-.readingIcon {
-  color: var(--foreground-muted);
+.readButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--accent);
+  color: var(--primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.5rem 1.25rem;
+  border-radius: 2rem;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.readingCard:hover .readButton {
+  background-color: var(--primary);
+  color: white;
 }
 
 /* Resources */

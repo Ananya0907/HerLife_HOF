@@ -69,12 +69,6 @@ export default function PreteenLearnPage() {
       channel: "Kids Health",
       time: "5:30",
       thumbClass: styles.videoThumbPink
-    },
-    {
-      title: "Growing Pains: What's Normal",
-      channel: "Healthy Kids",
-      time: "7:45",
-      thumbClass: styles.videoThumbYellow
     }
   ];
 

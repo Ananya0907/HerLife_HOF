@@ -229,3 +229,133 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Daily Wellness Balance Section Styles */
+.wellnessBalanceSection {
+  margin-top: 2.5rem;
+  background-color: var(--white);
+  border-radius: 1.5rem;
+  padding: 2rem;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+.wellnessBalanceHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1rem;
+}
+
+.wellnessBalanceHeader h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--foreground);
+  margin: 0;
+}
+
+.logStatusBadge {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.35rem 0.8rem;
+  border-radius: 1rem;
+}
+
+.logStatusBadgeActive {
+  background-color: #e3faf2;
+  color: #0ca678;
+}
+
+.logStatusBadgePending {
+  background-color: #fff4e6;
+  color: #f76707;
+}
+
+.wellnessGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.wellnessCard {
+  background-color: var(--bg-soft);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.wellnessCardTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--foreground-muted);
+}
+
+.wellnessCardContent {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.wellnessCardMainVal {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.wellnessCardSubVal {
+  font-size: 0.9rem;
+  color: var(--foreground-muted);
+}
+
+.wellnessCardProgressBg {
+  width: 100%;
+  height: 8px;
+  background-color: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.wellnessCardProgressBar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.noLogContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.noLogText {
+  color: var(--foreground-muted);
+  font-size: 1.05rem;
+  margin-bottom: 1.25rem;
+}
+
+.noLogBtn {
+  background-color: var(--primary);
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  padding: 0.75rem 1.75rem;
+  border-radius: 2rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(209, 77, 114, 0.25);
+  transition: all 0.2s ease;
+}
+
+.noLogBtn:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(209, 77, 114, 0.35);
+}
+

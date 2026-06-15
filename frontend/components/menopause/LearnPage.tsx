@@ -230,7 +230,7 @@ export default function MenopauseLearnPage() {
           </div>
           <p style={{color: '#4B5563', marginBottom: '1.5rem'}}>Recommended topics to explore:</p>
           
-          <div className={styles.grid2} style={{marginBottom: '1.5rem'}}>
+          <div className={styles.videoGrid3} style={{marginBottom: '1.5rem'}}>
             <div className={`${styles.cardBase} ${styles.bgLightOrange}`}>
               <div style={{fontSize: '1.5rem'}}>🎬</div>
               <div className={styles.cardTitle} style={{marginTop: '0.5rem'}}>What Happens During Menopause</div>
@@ -245,11 +245,6 @@ export default function MenopauseLearnPage() {
               <div style={{fontSize: '1.5rem'}}>🎬</div>
               <div className={styles.cardTitle} style={{marginTop: '0.5rem'}}>HRT Explained</div>
               <div className={styles.cardDesc}>Understanding hormone replacement therapy options</div>
-            </div>
-            <div className={`${styles.cardBase} ${styles.bgLightOrange}`}>
-              <div style={{fontSize: '1.5rem'}}>🎬</div>
-              <div className={styles.cardTitle} style={{marginTop: '0.5rem'}}>Bone Health After Menopause</div>
-              <div className={styles.cardDesc}>Preventing osteoporosis and maintaining strong bones</div>
             </div>
           </div>
           

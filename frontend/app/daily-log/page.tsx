@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Heart, 
@@ -14,6 +14,20 @@ import DashboardNavbar from '../../components/shared/DashboardNavbar';
 
 export default function DailyLogPage() {
   const router = useRouter();
+
+  useEffect(() => {
+    const data = localStorage.getItem('herlife_onboarding');
+    if (data) {
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed.phase === 'pregnant') {
+          router.replace('/pregnant/log');
+        } else if (parsed.phase === 'postpartum') {
+          router.replace('/postpartum/log');
+        }
+      } catch (e) {}
+    }
+  }, [router]);
 
   return (
     <div className={styles.container}>

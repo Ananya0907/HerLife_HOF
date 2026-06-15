@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft } from 'lucide-react';
+import { API_BASE_URL } from '@/utils/api';
 import styles from './Onboarding.module.css';
 import { PHASES } from './questions';
 import { useRouter } from 'next/navigation';
@@ -54,7 +55,7 @@ export default function OnboardingFlow() {
     const user_id = localStorage.getItem('user_id');
     if (user_id) {
       try {
-        await fetch('http://127.0.0.1:5000/api/update-phase', {
+        await fetch(`${API_BASE_URL}/api/update-phase`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

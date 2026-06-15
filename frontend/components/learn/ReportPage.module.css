@@ -1,0 +1,415 @@
+.container {
+  min-height: 100vh;
+  background-color: var(--background);
+  color: var(--foreground);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  flex: 1;
+  padding: 2.5rem;
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Header & Navigation */
+.headerActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.backBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--foreground-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  transition: all 0.2s;
+}
+
+.backBtn:hover {
+  color: var(--primary);
+  background-color: var(--accent);
+}
+
+.downloadBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: white;
+  background-color: var(--primary);
+  border: none;
+  cursor: pointer;
+  padding: 0.6rem 1.5rem;
+  border-radius: 2rem;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(209, 77, 114, 0.2);
+}
+
+.downloadBtn:hover {
+  background-color: #b83e60;
+  transform: translateY(-1px);
+}
+
+/* Report Document Styling */
+.reportCard {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  padding: 3rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.reportHeader {
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 1.5rem;
+}
+
+.logoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.docType {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+  color: var(--foreground-muted);
+}
+
+.reportTitle {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--foreground);
+  margin-bottom: 0.5rem;
+}
+
+.reportSub {
+  font-size: 0.95rem;
+  color: var(--foreground-muted);
+}
+
+/* Metadata Grid */
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  background-color: var(--background);
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+.metaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.metaLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--foreground-muted);
+  text-transform: uppercase;
+}
+
+.metaValue {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+/* Section Header */
+.sectionTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+}
+
+/* Tables */
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th {
+  background-color: var(--accent);
+  color: var(--primary);
+  font-weight: 700;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground);
+}
+
+.table tr:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.01);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Alert Banner */
+.noticeBanner {
+  background-color: #FFFBEB;
+  border: 1px solid #FEF3C7;
+  color: #D97706;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Nutrition Cards */
+.nutritionGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.nutritionCard {
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+.nutritionCard h4 {
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  color: var(--foreground);
+}
+
+.nutritionList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.nutritionList li {
+  font-size: 0.9rem;
+  color: var(--foreground-muted);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.bullet {
+  color: var(--primary);
+  font-weight: bold;
+}
+
+.bulletAvoid {
+  color: #EF4444;
+  font-weight: bold;
+}
+
+.mealPlanSection {
+  background-color: #FEF2F4;
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+.mealPlanGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.mealPlanItem {
+  background-color: white;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.mealLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+}
+
+.mealText {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* Hormone Grid */
+.hormoneGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.hormoneProgressBox {
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.hormoneName {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--foreground);
+}
+
+.hormoneValue {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary);
+  background-color: var(--accent);
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.5rem;
+  align-self: flex-start;
+}
+
+.hormoneProgressBg {
+  height: 8px;
+  background-color: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+
+.hormoneProgressBar {
+  height: 100%;
+  border-radius: 4px;
+}
+
+/* Exercise Grid */
+.exerciseGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 1.8fr;
+  gap: 1.5rem;
+}
+
+.scheduleGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.scheduleItem {
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.scheduleDay {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.scheduleWorkout {
+  font-size: 0.9rem;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* Print Layout */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .noPrint {
+    display: none !important;
+  }
+
+  .content {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .reportCard {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    gap: 1.5rem !important;
+  }
+
+  .metaGrid {
+    background-color: #F3F4F6 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .mealPlanSection {
+    background-color: #FFF1F2 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .metaGrid, .nutritionGrid, .hormoneGrid, .mealPlanGrid, .exerciseGrid {
+    grid-template-columns: 1fr;
+  }
+}
