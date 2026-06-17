@@ -6,11 +6,14 @@ import {
   Heart, 
   Dumbbell,
   Apple,
-  Moon
+  Moon,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import styles from './Wellness.module.css';
 import DashboardNavbar from '../shared/DashboardNavbar';
 import { exerciseData } from './exerciseData';
+import { dietData, recipeData } from './dietData';
 import { API_BASE_URL } from '@/utils/api';
 
 export default function WellnessPage() {
@@ -57,13 +60,25 @@ export default function WellnessPage() {
   const activeKey = phaseKeyMap[currentPhase.toLowerCase()] || 'follicular';
   const activePhaseData = exerciseData[activeKey];
 
-  const foods = [
-    'Lean proteins (chicken, fish)',
-    'Fresh vegetables',
-    'Fermented foods',
-    'Eggs',
-    'Nuts and seeds'
-  ];
+  const activeDietKey = `${activeKey}Phase`;
+  const activeDiet = dietData[activeDietKey] || dietData.follicularPhase;
+  const activeRecipes = recipeData[activeDietKey] || recipeData.follicularPhase;
+
+  const [expandedRecipes, setExpandedRecipes] = useState<Record<string, boolean>>({});
+
+  const toggleRecipe = (recipeKey: string) => {
+    setExpandedRecipes(prev => ({
+      ...prev,
+      [recipeKey]: !prev[recipeKey]
+    }));
+  };
+
+  const focusAreaMap: Record<string, string> = {
+    menstrualPhase: 'Iron-rich & hydrating foods',
+    follicularPhase: 'Light, fresh foods',
+    ovulationPhase: 'Antioxidant & fiber-rich foods',
+    lutealPhase: 'Complex carbs & magnesium',
+  };
 
   if (loading) {
     return (
@@ -138,13 +153,13 @@ export default function WellnessPage() {
             
             <div className={`${styles.infoBox} ${styles.greenBox}`}>
               <div className={styles.infoLabel}>Focus Area</div>
-              <div className={styles.infoValue}>Light, fresh foods</div>
+              <div className={styles.infoValue}>{focusAreaMap[activeDietKey] || 'Light, fresh foods'}</div>
             </div>
 
-            <div className={styles.listTitle}>Recommended foods:</div>
+            <div className={styles.listTitle}>Prioritize This Phase:</div>
             
             <div style={{ marginBottom: '1.5rem' }}>
-              {foods.map((food, index) => (
+              {activeDiet.prioritizeFoods.map((food, index) => (
                 <div key={index} className={`${styles.listItem} ${styles.listItemGreen}`}>
                   <div className={styles.listDotGreen}></div>
                   <div>{food}</div>
@@ -152,12 +167,78 @@ export default function WellnessPage() {
               ))}
             </div>
 
-            <div className={`${styles.tipBox} ${styles.tipBoxOrange}`}>
-              <div className={styles.tipContent}>
-                <div style={{ marginBottom: '0.2rem' }}>Try to avoid:</div>
-                <div>Heavy, greasy foods</div>
-              </div>
+            <div className={styles.listTitle}>Foods to Avoid:</div>
+            
+            <div style={{ marginBottom: '1.5rem' }}>
+              {activeDiet.foodsToAvoid.map((food, index) => (
+                <div key={index} className={`${styles.listItem} ${styles.listItemPinkSimple}`}>
+                  <div className={styles.listDotPinkSimple}></div>
+                  <div>{food}</div>
+                </div>
+              ))}
             </div>
+
+            <div className={styles.recipeSectionTitle}>Recipes for This Phase</div>
+
+            {activeRecipes.map((recipe, index) => {
+              if (!recipe.recipeName) {
+                return (
+                  <div key={index} className={styles.recipePlaceholder}>
+                    Recipe coming soon 🌿
+                  </div>
+                );
+              }
+
+              const recipeKey = `${activeDietKey}-${index}`;
+              const isExpanded = !!expandedRecipes[recipeKey];
+
+              return (
+                <div key={index} className={styles.recipeCard}>
+                  <div className={styles.recipeName}>{recipe.recipeName}</div>
+                  <div className={styles.recipeDesc}>{recipe.description}</div>
+                  
+                  <div className={styles.ingredientsTitle}>Ingredients:</div>
+                  <div className={styles.ingredientsList}>
+                    {recipe.ingredients.join(', ')}
+                  </div>
+                  
+                  <button 
+                    onClick={() => toggleRecipe(recipeKey)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--primary)',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      marginTop: '0.5rem',
+                      textAlign: 'left',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    {isExpanded ? 'Hide Instructions' : 'View Instructions'}
+                    {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </button>
+
+                  {isExpanded && (
+                    <div style={{ 
+                      fontSize: '0.85rem', 
+                      color: 'var(--foreground-muted)', 
+                      marginTop: '0.5rem', 
+                      borderTop: '1px dashed var(--border)',
+                      paddingTop: '0.5rem',
+                      lineHeight: '1.4'
+                    }}>
+                      {recipe.howToMake}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </main>
